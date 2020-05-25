@@ -19,9 +19,7 @@ class ManyEM_ClearSelectionAjax
         $selected = json_decode($payload, true);
 
         $module->updateSelection($selected);
-        print json_encode(array(
-            "success" => true
-        ));
+        print json_encode($selected);
     }
 }
 ManyEM_ClearSelectionAjax::execute($module);

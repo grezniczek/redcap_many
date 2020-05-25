@@ -32,7 +32,7 @@ $many = new ManyEM_PluginPage($module);
 // Plugin Page
 ?>
 <div class="many-em-pagecontainer">
-    <h3><i class="far fa-check-square"></i> Many</h3>
+    <h3><i class="far fa-check-square many-em-logo"></i> Many</h3>
     <?php $many->render(); ?>
 </div>
 <?php 

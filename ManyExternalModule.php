@@ -6,6 +6,8 @@ use \DE\RUB\Utility\InjectionHelper;
 
 class ManyExternalModule extends AbstractExternalModule {
 
+    private const MANY_EM_SESSION_KEY = "many-em-selection-store";
+
     function redcap_every_page_before_render($project_id) {
         
         // Can we show fake data entry pages?
@@ -57,21 +59,7 @@ class ManyExternalModule extends AbstractExternalModule {
         $ih->js("js/many-em.js");
         $ih->css("css/many-em.css");
 
-
-        // DEMO - fake counter
-        if (!isset($_SESSION["many-em"][$project_id])) {
-            $_SESSION["many-em"][$project_id] = array ("count" => 1);
-        }
-        else {
-            $_SESSION["many-em"][$project_id]["count"]++;
-        }
-        $count = $_SESSION["many-em"][$project_id]["count"];
-
-
-        $dto_selected = array("R1", "R2");
-
-
-
+        $dto_selected = $this->loadSelected($project_id);
 
         // Link to plugin page in the Data Collection menu.
         $href = $this->getUrl("many.php");
@@ -81,6 +69,8 @@ class ManyExternalModule extends AbstractExternalModule {
             "href" => $href,
             "name" => $name,
             "clearText" => "Clear", // tt-fy
+            "addText" => "Add this record", // tt-fy
+            "removeText" => "Remove this record", // tt-fy
         );
 
         // Record Status Dashboard.
@@ -88,9 +78,29 @@ class ManyExternalModule extends AbstractExternalModule {
             "init" => strpos(PAGE, "DataEntry/record_status_dashboard.php") !== false,
             "activate" => $this->getProjectSetting("rsd-active") === true,
             "updateSelection" => "Update selection", // tt-fy
+            "restore" => "Restore", // tt-fy
             "addAll" => "Add all", // tt-fy
             "removeAll" => "Remove all", // tt-fy
         );
+
+        // Record Home Page.
+        $dto_rhp = array(
+            "init" => false,
+        );
+        if (strpos(PAGE, "DataEntry/record_home.php") !== false) {
+            $dto_rhp["init"] = true;
+            // Use Project Data Structure to get
+            // all repeating forms on all events and assemble a list
+            // of ids like "repeat_instrument_table-80-repeating_store"
+            // i.e. "repeating_instrumnent_table-" + event_id + "-" + form name
+            // Then, JS side can use this to add UI elements
+            
+
+        }
+
+
+
+
 
         // Transfer data to the JavaScript implementation.
         ?>
@@ -102,15 +112,25 @@ class ManyExternalModule extends AbstractExternalModule {
             DTO.link = <?=json_encode($dto_link)?>;
             DTO.selected = <?=json_encode($dto_selected)?>;
             DTO.rsd = <?=json_encode($dto_rsd)?>;
+            DTO.rhp = <?=json_encode($dto_rhp)?>;
         </script>
         <?php
     }
 
+
+    private function loadSelected($pid) {
+        return isset($_SESSION[self::MANY_EM_SESSION_KEY][$pid]) ?
+            $_SESSION[self::MANY_EM_SESSION_KEY][$pid] : 
+            array();
+    }
+
+    private function saveSelected($pid, $selected) {
+        $_SESSION[self::MANY_EM_SESSION_KEY][$pid] = $selected;
+    }
+
     public function updateSelection($selected) {
         $pid = $this->getProjectId();
-
-
-
+        $this->saveSelected($pid, $selected);
     }
 
 } // ManyExternalModule

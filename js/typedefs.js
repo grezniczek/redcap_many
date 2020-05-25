@@ -12,10 +12,11 @@
  * @typedef ManyDTO
  * @type {{
  *  name: string
- *  link: MenuLinkDTO
+ *  link: RecordLinkDTO
  *  selected: string[]
  *  debug: boolean
  *  rsd: RecordStatusDashboardDTO
+ *  rhp: RecordHomePageDTO
  *  updateUrl: string
  * }}
  */
@@ -26,27 +27,60 @@
  *  init: boolean
  *  activate: boolean
  *  updateSelection: string
+ *  restore: string
  *  addAll: string
  *  removeAll: string
  * }}
  */
 
 /**
- * @typedef MenuLinkDTO
+ * @typedef RecordHomePageDTO
+ * @type {{
+ *  init: boolean
+ * }}
+ */
+
+/**
+ * @typedef RecordLinkDTO
  * @type {{
  *  href: string
  *  name: string
  *  clearText: string
+ *  addText: string
+ *  removeText: string
+ * }}
+ */
+
+/**
+ * @typedef RecordLinkState
+ * @type {{
  *  $counter: JQuery
  *  $clear: JQuery
  * }}
  */
 
 /**
- * @typedef MenuLink
+ * @typedef RecordLink
  * @type {{
  *  $counter?: JQuery
  *  $clear?: JQuery
+ * }}
+ */
+
+/**
+ * @typedef RecordStatusDashboardState
+ * @type {{
+ *  visible: boolean
+ *  $statusBarToggle: JQuery
+ *  $toggleAllCheckbox: JQuery
+ * }}
+ */
+
+/**
+ * @typedef RecordHomePageState
+ * @type {{
+ *  record: string
+ *  $addRemoveLink: JQuery
  * }}
  */
 
