@@ -2,7 +2,7 @@
 //
 // Many EM - Plugin
 //
-class ManyPluginPage
+class ManyEM_PluginPage
 {
     /** @var ManyExternalModule $module Many EM instance */
     private $module;
@@ -27,7 +27,7 @@ class ManyPluginPage
 // REDCap Header
 //
 require_once APP_PATH_DOCROOT . "ProjectGeneral/header.php";
-$many = new ManyPluginPage($module);
+$many = new ManyEM_PluginPage($module);
 //
 // Plugin Page
 ?>

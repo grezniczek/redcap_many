@@ -17,6 +17,16 @@
     "system-settings": [
     ],
     "project-settings": [
+        {
+            "name": "Debug mode",
+            "key": "debug-mode",
+            "type": "checkbox"
+        },
+        {
+            "name": "Activate Many on Record Status Dashboard by default",
+            "key": "rsd-active",
+            "type": "checkbox"
+        }
     ],
     "compatibility": {
         "php-version-min": "5.6.0",

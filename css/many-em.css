@@ -1,0 +1,29 @@
+/*
+ *  Many EM 
+ */
+.many-em-logo {
+    color: green !important;
+}
+.many-em-menu-link-count {
+    text-indent: 0;
+    margin-left: 0.5em;
+    font-size: 11px;
+    font-weight: normal;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+.many-em-menu-link-clear {
+    font-size: 0.8em !important;
+    margin-left: 0.5em;
+}
+
+
+.many-em-select-toolbar {
+    margin: -0.2em 0 0.5em 1em;
+}
+.many-em-checkbox-col {
+    text-align: center;
+    max-width: 25px;
+    padding: 0;
+    vertical-align: bottom;
+}

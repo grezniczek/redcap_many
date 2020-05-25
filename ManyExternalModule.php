@@ -1,6 +1,8 @@
 <?php namespace DE\RUB\ManyExternalModule;
 
 use ExternalModules\AbstractExternalModule;
+use \DE\RUB\Utility\InjectionHelper;
+
 
 class ManyExternalModule extends AbstractExternalModule {
 
@@ -43,6 +45,20 @@ class ManyExternalModule extends AbstractExternalModule {
     }
 
     function redcap_every_page_top($project_id) {
+
+
+        // TODO - limit scope of this hook
+        
+        $debug = $this->getProjectSetting("debug-mode") === true;
+
+        // Inject CSS and JS.
+        if (!class_exists("\RUB\Utility\InjectionHelper")) include_once("classes/InjectionHelper.php");
+        $ih = InjectionHelper::init($this);
+        $ih->js("js/many-em.js");
+        $ih->css("css/many-em.css");
+
+
+        // DEMO - fake counter
         if (!isset($_SESSION["many-em"][$project_id])) {
             $_SESSION["many-em"][$project_id] = array ("count" => 1);
         }
@@ -50,47 +66,51 @@ class ManyExternalModule extends AbstractExternalModule {
             $_SESSION["many-em"][$project_id]["count"]++;
         }
         $count = $_SESSION["many-em"][$project_id]["count"];
+
+
+        $dto_selected = array("R1", "R2");
+
+
+
+
+        // Link to plugin page in the Data Collection menu.
         $href = $this->getUrl("many.php");
-    
+        $name = $this->getConfig()["name"];
+        $updateUrl = $this->getUrl("ajax/update-selection.php");
+        $dto_link = array(
+            "href" => $href,
+            "name" => $name,
+            "clearText" => "Clear", // tt-fy
+        );
+
+        // Record Status Dashboard.
+        $dto_rsd = array(
+            "init" => strpos(PAGE, "DataEntry/record_status_dashboard.php") !== false,
+            "activate" => $this->getProjectSetting("rsd-active") === true,
+            "updateSelection" => "Update selection", // tt-fy
+            "addAll" => "Add all", // tt-fy
+            "removeAll" => "Remove all", // tt-fy
+        );
+
+        // Transfer data to the JavaScript implementation.
         ?>
-        <style>
-            .many-em-logo {
-                color: green !important;
-            }
-            .many-em-menu-link-count {
-                text-indent: 0;
-                margin-left: 0.5em;
-                font-size: 11px;
-                font-weight: normal;
-                padding-left: 0.5em;
-                padding-right: 0.5em;
-            }
-        </style>
         <script>
-            ;(function() {
-                function addLink() {
-                    var $menu = $('<div></div>')
-                        .addClass('hang')
-                        .css('position', 'relative')
-                        .append($('<i></i>').addClass('far fa-check-square fs14 many-em-logo'))
-                        .append('&nbsp;&nbsp;')
-                        .append($('<a></a>')
-                            .attr('href','<?=$href?>')
-                            .text('Many'))
-                        .append($('<span></span>')
-                            .addClass('badge badge-secondary many-em-menu-link-count')
-                            .text('<?=$count?>'))
-                    var $ip = $('#projMenuDataCollection').parent().parent().find('div.hang').last()
-                    $menu.insertAfter($ip.next('.menuboxsub').length ? $ip.next() : $ip)
-                }
-                $(addLink)
-            })();
+            var DTO = window.ExternalModules.ManyEM_DTO;
+            DTO.debug = <?=json_encode($debug)?>;
+            DTO.name = <?=json_encode($name)?>;
+            DTO.updateUrl = <?=json_encode($updateUrl)?>;
+            DTO.link = <?=json_encode($dto_link)?>;
+            DTO.selected = <?=json_encode($dto_selected)?>;
+            DTO.rsd = <?=json_encode($dto_rsd)?>;
         </script>
         <?php
+    }
+
+    public function updateSelection($selected) {
+        $pid = $this->getProjectId();
+
 
 
     }
-
-
 
 } // ManyExternalModule
