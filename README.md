@@ -1,3 +1,3 @@
 # Many
 
-A REDCap External Module allowing to manipulate a set of records.
+A REDCap External Module for manipulating sets of records.
