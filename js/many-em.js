@@ -97,7 +97,7 @@ function addRecordLink() {
         rls.$clear.after($('<a></a>')
             .addClass('many-em-menu-link-addremoverecord')
             .attr('href', 'javascript:;')
-            .on('click', toggleInstances))
+            .on('click', addRemoveRecord))
         .after(' &mdash; ')
         rhpState.$addRemoveLink = $menu.find('.many-em-menu-link-addremoverecord')
     }
@@ -125,10 +125,16 @@ function updateLink() {
         rls.$clear.hide()
     }
     if (DTO.rhp.init) {
-        rhpState.$addRemoveLink.text(
-            manySelected[rhpState.record] ? 
-            DTO.link.removeText : 
-            DTO.link.addText)
+        if (manySelected[rhpState.record]) {
+            rhpState.$addRemoveLink.text(DTO.link.removeText).show()
+            rls.$counter.addClass('badge-primary')
+            rls.$counter.removeClass('badge-secondary')
+        }
+        else {
+            rhpState.$addRemoveLink.text(DTO.link.addText).show()
+            rls.$counter.addClass('badge-secondary')
+            rls.$counter.removeClass('badge-primary')
+        }
     }
 }
 
@@ -259,6 +265,17 @@ function updateRecordStatusDashboardSelection() {
     })
 }
 
+function addRemoveRecord() {
+    rhpState.$addRemoveLink.hide()
+    if (manySelected[rhpState.record]) {
+        manySelected[rhpState.record] = false
+    }
+    else {
+        manySelected[rhpState.record] = true
+    }
+    updateServerSelection()
+}
+
 function clearSelection() {
     updateServerSelection({})
 }
@@ -316,8 +333,6 @@ $(function() {
     if (DTO.rhp.init) determineRecordState()
     
     addRecordLink()
-    // Determine whether this record has already been saved.
-    DTO.rhp.init = DTO.rhp.init && $('').length > 0
     if (DTO.rsd.init) setupRecordStatusDashboard()
     if (DTO.rhp.init) setupRecordHomePage()
 })
