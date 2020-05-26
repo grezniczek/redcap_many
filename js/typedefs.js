@@ -37,6 +37,7 @@
  * @typedef RecordHomePageDTO
  * @type {{
  *  init: boolean
+ *  rit: string[]
  * }}
  */
 
@@ -81,11 +82,16 @@
  * @type {{
  *  record: string
  *  $addRemoveLink: JQuery
+ *  visible: Object<string, boolean>
  * }}
  */
 
 /**
- * @typedef ManySelection
+ * @typedef ManyRecords
  * @type {Object<string, boolean>}
  */
 
+/**
+ * @typedef ManyInstances
+ * @type {Object<string, Object<string, boolean>>}
+ */

@@ -2,7 +2,7 @@
 
 use ExternalModules\AbstractExternalModule;
 use \DE\RUB\Utility\InjectionHelper;
-
+use \DE\RUB\Utility\Project;
 
 class ManyExternalModule extends AbstractExternalModule {
 
@@ -92,10 +92,19 @@ class ManyExternalModule extends AbstractExternalModule {
             // Use Project Data Structure to get
             // all repeating forms on all events and assemble a list
             // of ids like "repeat_instrument_table-80-repeating_store"
-            // i.e. "repeating_instrumnent_table-" + event_id + "-" + form name
+            // i.e. "repeat_instrument_table-" + event_id + "-" + form name
             // Then, JS side can use this to add UI elements
-            
-
+            if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
+            /** @var \DE\RUB\Utility\Project */
+            $project = Project::load($this->framework, $project_id);
+            $repeating = $project->getRepeatingFormsEvents();
+            $dto_rhp["rit"] = array();
+            foreach ($repeating["forms"] as $event_id => $forms) {
+                foreach ($forms as $form) {
+                    $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
+                    array_push($dto_rhp["rit"], $rit_key);
+                }
+            }
         }
 
 
