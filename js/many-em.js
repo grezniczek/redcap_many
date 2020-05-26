@@ -472,7 +472,7 @@ function updateServerSelection(cmd, diff) {
     .done(function(data, textStatus, jqXHR) {
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
         updateLink()
-        log('Many EM - Records updated.')
+        log('Many EM - Records updated. Currently selected:', manyRecords)
     })
     .fail(function(jqXHR, textStatus, errorThrown) {
         log(jqXHR, textStatus, errorThrown)

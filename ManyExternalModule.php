@@ -107,7 +107,7 @@ class ManyExternalModule extends AbstractExternalModule {
                 foreach ($repeating["forms"] as $event_id => $forms) {
                     foreach ($forms as $form) {
                         $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
-                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $event_id, $form);
+                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, "$event_id", $form);
                     }
                 }
             }
@@ -151,16 +151,27 @@ class ManyExternalModule extends AbstractExternalModule {
                 if ($pos !== false) {
                     array_splice($records, $pos , 1);
                 }
+                $this->clearAllInstances("$record_id");
             }
         }
-        $this->saveSelectedRecords($pid, array_unique($records, SORT_STRING));
+        $this->saveSelectedRecords($pid, array_values(array_unique($records, SORT_STRING)));
     }
 
     public function clearRecords() {
         $pid = $this->getProjectId();
         $this->saveSelectedRecords($pid, array());
+        $this->clearAllInstances();
     }
 
+    private function clearAllInstances($record_id = null) {
+        $pid = $this->getProjectId();
+        if ($record_id) {
+            unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
+        }
+        else {
+            unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid]);
+        }
+    }
 
     private function loadSelectedInstances($pid, $record_id, $event_id, $form) {
         return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form]) ?
@@ -192,7 +203,7 @@ class ManyExternalModule extends AbstractExternalModule {
                 }
             }
         }
-        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_unique($instances, SORT_STRING));
+        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_values(array_unique($instances, SORT_STRING)));
     }
     
     public function clearInstances($record_id, $event_id, $form) {
