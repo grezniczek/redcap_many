@@ -6,7 +6,8 @@ use \DE\RUB\Utility\Project;
 
 class ManyExternalModule extends AbstractExternalModule {
 
-    private const MANY_EM_SESSION_KEY = "many-em-selection-store";
+    private const MANY_EM_SESSION_KEY_RECORDS = "many-em-selection-store-records";
+    private const MANY_EM_SESSION_KEY_INSTANCES = "many-em-selection-store-instances";
 
     function redcap_every_page_before_render($project_id) {
         
@@ -86,30 +87,31 @@ class ManyExternalModule extends AbstractExternalModule {
         // Record Home Page.
         $dto_rhp = array(
             "init" => false,
+            "rit" => array()
         );
+        // Do we have a record?
         if (strpos(PAGE, "DataEntry/record_home.php") !== false) {
-            $dto_rhp["init"] = true;
-            // Use Project Data Structure to get
-            // all repeating forms on all events and assemble a list
-            // of ids like "repeat_instrument_table-80-repeating_store"
-            // i.e. "repeat_instrument_table-" + event_id + "-" + form name
-            // Then, JS side can use this to add UI elements
-            if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
-            /** @var \DE\RUB\Utility\Project */
-            $project = Project::load($this->framework, $project_id);
-            $repeating = $project->getRepeatingFormsEvents();
-            $dto_rhp["rit"] = array();
-            foreach ($repeating["forms"] as $event_id => $forms) {
-                foreach ($forms as $form) {
-                    $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
-                    array_push($dto_rhp["rit"], $rit_key);
+            $record_id = isset($_GET["id"]) && !isset($_GET["auto"]) ? $_GET["id"] : null;
+            if ($record_id != null) {
+                $dto_rhp["init"] = true;
+                // Use Project Data Structure to get
+                // all repeating forms on all events and assemble a list
+                // of ids like "repeat_instrument_table-80-repeating_store"
+                // i.e. "repeat_instrument_table-" + event_id + "-" + form name
+                // Then, JS side can use this to add UI elements
+                if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
+                /** @var \DE\RUB\Utility\Project */
+                $project = Project::load($this->framework, $project_id);
+                $repeating = $project->getRepeatingFormsEvents();
+                $dto_rhp["rit"] = array();
+                foreach ($repeating["forms"] as $event_id => $forms) {
+                    foreach ($forms as $form) {
+                        $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
+                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $event_id, $form);
+                    }
                 }
             }
         }
-
-
-
-
 
         // Transfer data to the JavaScript implementation.
         ?>
@@ -128,13 +130,13 @@ class ManyExternalModule extends AbstractExternalModule {
 
 
     private function loadSelectedRecords($pid) {
-        return isset($_SESSION[self::MANY_EM_SESSION_KEY][$pid]) ?
-            $_SESSION[self::MANY_EM_SESSION_KEY][$pid] : 
+        return isset($_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid]) ?
+            $_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid] : 
             array();
     }
 
     private function saveSelectedRecords($pid, $selected) {
-        $_SESSION[self::MANY_EM_SESSION_KEY][$pid] = $selected;
+        $_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid] = $selected;
     }
 
     public function updateRecords($diff) {
@@ -157,6 +159,45 @@ class ManyExternalModule extends AbstractExternalModule {
     public function clearRecords() {
         $pid = $this->getProjectId();
         $this->saveSelectedRecords($pid, array());
+    }
+
+
+    private function loadSelectedInstances($pid, $record_id, $event_id, $form) {
+        return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form]) ?
+        $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] :
+        array();
+    }
+
+    private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances) {
+        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid]))
+            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid] = array();
+        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]))
+            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id] = array();
+        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]))
+            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] = array();
+        $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
+    }
+
+    public function updateInstances($record_id, $event_id, $form, $diff) {
+        $pid = $this->getProjectId();
+        $instances = $this->loadSelectedInstances($pid, $record_id, $event_id, $form);
+        foreach ($diff as $instance => $is_selected) {
+            if ($is_selected) {
+                array_push($instances, "$instance");
+            }
+            else {
+                $pos = array_search("$instance", $instances, true);
+                if ($pos !== false) {
+                    array_splice($instances, $pos , 1);
+                }
+            }
+        }
+        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_unique($instances, SORT_STRING));
+    }
+    
+    public function clearInstances($record_id, $event_id, $form) {
+        $pid = $this->getProjectId();
+        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array());
     }
 
 } // ManyExternalModule

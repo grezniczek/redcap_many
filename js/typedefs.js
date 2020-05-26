@@ -37,7 +37,7 @@
  * @typedef RecordHomePageDTO
  * @type {{
  *  init: boolean
- *  rit: string[]
+ *  rit: Object<string, string[]>
  * }}
  */
 

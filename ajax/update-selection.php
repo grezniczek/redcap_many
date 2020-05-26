@@ -20,11 +20,16 @@ class ManyEM_ClearSelectionAjax
 
         switch ($update["command"]) {
             case "update-records":
-            case "add-all-records":
                 $module->updateRecords($update["diff"]);
                 break;
             case "remove-all-records":
                 $module->clearRecords();
+                break;
+            case "update-instances":
+                $module->updateInstances($update["record"], $update["event"], $update["form"], $update["diff"]);
+                break;
+            case "remove-all-instances":
+                $module->clearInstances($update["record"], $update["event"], $update["form"]);
                 break;
         }
 

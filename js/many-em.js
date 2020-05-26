@@ -217,10 +217,16 @@ function setupRecordStatusDashboard() {
 }
 
 
+/**
+ * Applies changes to a repeating instrument table to the selected instances
+ * @param {string} rit repeat_instrument_table-event_id-form_name
+ */
 function applyRHPinstances(rit) {
     var $rit = $('#' + rit)
     var count = 0
     // Update data
+    /** @type {UpdateDiff} */ 
+    var diff = {}
     $rit.find('input[data-many-em-instance]').each(function() {
         var $cb = $(this)
         if (typeof manyInstances[rit] == 'undefined') {
@@ -229,8 +235,16 @@ function applyRHPinstances(rit) {
         var checked = $cb.prop('checked')
         var instance = $cb.attr('data-many-em-instance')
         manyInstances[rit][instance] = checked
+        diff[instance] = checked
         if (checked) count++
     })
+    // Update server
+    if (count == 0) {
+        updateServerInstances('remove-all-instances', rit, null)
+    }
+    else {
+        updateServerInstances('update-instances', rit, diff)
+    }
     // Update counter
     $rit.find('.many-em-rit-instance-count').text(count)
 }
@@ -240,7 +254,11 @@ function applyRHPinstances(rit) {
  */
 function setupRecordHomePage() {
     // Setup UI
-    DTO.rhp.rit.forEach(function(rit) {
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        manyInstances[rit] = {}
+        DTO.rhp.rit[rit].forEach(function(instance) {
+            manyInstances[rit][instance] = true
+        })
         rhpState.visible[rit] = false
         var parts = rit.split('-')
         var event_id = parts[1]
@@ -316,6 +334,8 @@ function setupRecordHomePage() {
                 var checked = $(e.target).prop('checked')
                 $rit.find('input[data-many-em-instance]').prop('checked', checked)
             })
+            // Update count
+            $rit.find('.many-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
         }
     })
     // Is the record in the selection?
@@ -360,7 +380,7 @@ function addAllRecords() {
         manyRecords[id] = true
         $cb.prop('checked', true)
     })
-    updateServerSelection('add-all-records', manyRecords)
+    updateServerSelection('update-records', manyRecords)
     log('Many EM - Added all')
 }
 
@@ -407,7 +427,7 @@ function addRemoveRecord(override) {
         $('.many-em-toggle-display').hide()
         $('.many-em-rit').hide(100)
         $('input[data-many-em-instance]').prop('checked', false)
-        DTO.rhp.rit.forEach(function(rit) {
+        Object.keys(DTO.rhp.rit).forEach(function(rit) {
             rhpState.visible[rit] = false
             applyRHPinstances(rit)
         })
@@ -432,15 +452,13 @@ function restoreRecordSelection() {
 /**
  * Performs a server update
  * Commands are:
- *  - remove-all-records
- *  - add-all-records
  *  - update-records (includes a diff)
+ *  - remove-all-records
  * 
  * @param {string} cmd The command to execute
  * @param {UpdateDiff} diff
  */
 function updateServerSelection(cmd, diff) {
-
     var data = {
         command: cmd,
         diff: diff
@@ -454,7 +472,40 @@ function updateServerSelection(cmd, diff) {
     .done(function(data, textStatus, jqXHR) {
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
         updateLink()
-        log('Many EM - Selection cleared.', data)
+        log('Many EM - Records updated.')
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+        log(jqXHR, textStatus, errorThrown)
+    })
+}
+
+/**
+ * Performs a server update
+ * Commands are:
+ *  - update-instances (includes a diff)
+ *  - remove-all-instances
+ * 
+ * @param {string} cmd 
+ * @param {string} rit repeat_instrument_table-event_id-form_name
+ * @param {UpdateDiff} diff 
+ */
+function updateServerInstances(cmd, rit, diff) {
+    var parts = rit.split('-')
+    var data = {
+        command: cmd,
+        record: rhpState.record,
+        event: parts[1],
+        form: parts[2],
+        diff: diff
+    }
+    $.ajax({
+        url: DTO.updateUrl,
+        type: 'POST',
+        data: 'payload=' + JSON.stringify(data),
+        dataType: 'json'
+    })
+    .done(function(data, textStatus, jqXHR) {
+        log('Many EM - Instances update (' + rit + ').')
     })
     .fail(function(jqXHR, textStatus, errorThrown) {
         log(jqXHR, textStatus, errorThrown)
