@@ -41,6 +41,7 @@ var rsdState = {
 var rhpState = {
     $addRemoveLink: null,
     record: null,
+    record_selected: false,
     visible: {}
 }
 
@@ -92,11 +93,11 @@ function addRecordLink() {
             .addClass('badge badge-secondary many-em-menu-link-count'))
     var $ip = $('#projMenuDataCollection').parent().parent().find('div.hang').last()
     $menu.insertAfter($ip.next('.menuboxsub').length ? $ip.next() : $ip)
-    $menu.find('.many-em-menu-link-count').after($('<a></a>')
-        .addClass('many-em-menu-link-clear')
-        .attr('href', 'javascript:;')
-        .text(DTO.link.clearText)
-        .on('click', clearSelection))
+    $menu.find('.many-em-menu-link-count')
+        .after($('<a href="javascript:;" class="many-em-menu-link-clear"></a>')
+            .text(DTO.link.clearText)
+            .on('click', clearSelection)
+        )
     rls.$counter = $menu.find('.many-em-menu-link-count')
     rls.$clear = $menu.find('.many-em-menu-link-clear')
     if (DTO.rhp.init) {
@@ -104,18 +105,10 @@ function addRecordLink() {
             .addClass('many-em-menu-link-addremoverecord')
             .attr('href', 'javascript:;')
             .on('click', addRemoveRecord))
-        .after(' &mdash; ')
+        .after(' &ndash; ')
         rhpState.$addRemoveLink = $menu.find('.many-em-menu-link-addremoverecord')
     }
     updateLink()
-}
-
-function addInstancesMenu() {
-    $('#record-home-link').parent().parent().parent()
-}
-
-function toggleInstances() {
-
 }
 
 function updateLink() {
@@ -184,15 +177,19 @@ function toggleRecordStatusDashboardCheckBoxes() {
             // Add toolbar.
             $('<div class="many-em-select-toolbar many-em-toggle-display"></div>')
                 .append($('<a href="javascript:;"></a>')
-                    .on('click', updateSelection)
-                    .text(DTO.rsd.updateSelection))
+                    .on('click', applyRecordSelection)
+                    .text(DTO.rsd.apply))
                 .append('&nbsp; | &nbsp;')
                 .append($('<a href="javascript:;"></a>')
-                    .on('click', addAll)
+                    .on('click', restoreRecordSelection)
+                    .text(DTO.rsd.restore))
+                .append('&nbsp; | &nbsp;')
+                .append($('<a href="javascript:;"></a>')
+                    .on('click', addAllRecords)
                     .text(DTO.rsd.addAll))
                 .append('&nbsp; | &nbsp;')
                 .append($('<a href="javascript:;"></a>')
-                    .on('click', removeAll)
+                    .on('click', removeAllRecords)
                     .text(DTO.rsd.removeAll))
                 .insertBefore($table)
             // Any checked?
@@ -242,6 +239,7 @@ function applyRHPinstances(rit) {
  * Adds Many UI to all repeating instrument tables.
  */
 function setupRecordHomePage() {
+    // Setup UI
     DTO.rhp.rit.forEach(function(rit) {
         rhpState.visible[rit] = false
         var parts = rit.split('-')
@@ -251,7 +249,7 @@ function setupRecordHomePage() {
         if ($rit.length) {
             // Add menu
             $rit.find('span.repeat_event_count_menu').after(
-                $('<span class="many-em-rit"></span>')
+                $('<span class="many-em-rit" style="display:none;"></span>')
                     .attr('data-many-em-event-id', event_id)
                     .attr('data-many-em-form-name', form_name)
                     .append(getManyIconHTML())
@@ -320,6 +318,11 @@ function setupRecordHomePage() {
             })
         }
     })
+    // Is the record in the selection?
+    rhpState.record_selected = manyRecords[rhpState.record] == true
+    if (rhpState.record_selected) {
+        $('.many-em-rit').show()
+    }
 }
 
 function toggleAll() {
@@ -327,37 +330,48 @@ function toggleAll() {
         $('input.many-em-toggle-all').prop('checked'))
 }
 
-function updateSelection() {
+function applyRecordSelection() {
+    /** @type {UpdateDiff} */
+    var diff = {}
     $('input[data-many-em-record]').each(function() {
         var $cb = $(this)
         var id = $cb.attr('data-many-em-record')
         var checked = $cb.prop('checked')
-        manyRecords[id] = checked
+        if (typeof manyRecords[id] == 'undefined') {
+            manyRecords[id] = checked
+            diff[id] = checked
+        }
+        else {
+            if (manyRecords[id] != checked) {
+                diff[id] = checked
+            }
+            manyRecords[id] = checked
+        }
     })
-    updateServerSelection()
+    updateServerSelection('update-records', diff)
     log('Many EM - Updated selection')
 }
 
 
-function addAll() {
+function addAllRecords() {
     $('input[data-many-em-record]').each(function() {
         var $cb = $(this)
         var id = $cb.attr('data-many-em-record')
         manyRecords[id] = true
         $cb.prop('checked', true)
     })
-    updateServerSelection()
+    updateServerSelection('add-all-records', manyRecords)
     log('Many EM - Added all')
 }
 
-function removeAll() {
+function removeAllRecords() {
     $('input[data-many-em-record]').each(function() {
         var $cb = $(this)
         var id = $cb.attr('data-many-em-record')
         manyRecords[id] = false
         $cb.prop('checked', false)
     })
-    updateServerSelection()
+    updateServerSelection('remove-all-records', null)
     log('Many EM - Removed all')
 }
 
@@ -370,34 +384,74 @@ function updateRecordStatusDashboardSelection() {
     })
 }
 
-function addRemoveRecord() {
+/**
+ * Adds or removes the current record to the record selection.
+ * @param {any} override 
+ */
+function addRemoveRecord(override) {
+    /** @type {UpdateDiff} */
+    var diff = {}
     rhpState.$addRemoveLink.hide()
-    if (manyRecords[rhpState.record]) {
-        manyRecords[rhpState.record] = false
+    if (typeof override != 'boolean') {
+        rhpState.record_selected = !rhpState.record_selected
     }
     else {
-        manyRecords[rhpState.record] = true
+        rhpState.record_selected = override == true
     }
-    updateServerSelection()
+    manyRecords[rhpState.record] = rhpState.record_selected
+    diff[rhpState.record] = rhpState.record_selected
+    if (rhpState.record_selected) {
+        $('.many-em-rit').show(100)
+    }
+    else {
+        $('.many-em-toggle-display').hide()
+        $('.many-em-rit').hide(100)
+        $('input[data-many-em-instance]').prop('checked', false)
+        DTO.rhp.rit.forEach(function(rit) {
+            rhpState.visible[rit] = false
+            applyRHPinstances(rit)
+        })
+    }
+    updateServerSelection('update-records', diff)
 }
 
 function clearSelection() {
-    updateServerSelection({})
+    manyRecords = {}
+    if (rhpState.record_selected) {
+        addRemoveRecord(false)
+    }
+    else {
+        updateServerSelection('remove-all-records', null)
+    }
 }
 
-function updateServerSelection(data) {
-    if (typeof data == 'undefined') data = manyRecords
-    var selected = Object.keys(data).filter(function(key) {
-        return data[key]
-    })
+function restoreRecordSelection() {
+    updateRecordStatusDashboardSelection()
+}
+
+/**
+ * Performs a server update
+ * Commands are:
+ *  - remove-all-records
+ *  - add-all-records
+ *  - update-records (includes a diff)
+ * 
+ * @param {string} cmd The command to execute
+ * @param {UpdateDiff} diff
+ */
+function updateServerSelection(cmd, diff) {
+
+    var data = {
+        command: cmd,
+        diff: diff
+    }
     $.ajax({
         url: DTO.updateUrl,
         type: 'POST',
-        data: 'payload=' + JSON.stringify(selected),
+        data: 'payload=' + JSON.stringify(data),
         dataType: 'json'
     })
     .done(function(data, textStatus, jqXHR) {
-        setSelected(data)
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
         updateLink()
         log('Many EM - Selection cleared.', data)

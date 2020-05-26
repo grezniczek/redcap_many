@@ -26,7 +26,7 @@
  * @type {{
  *  init: boolean
  *  activate: boolean
- *  updateSelection: string
+ *  apply: string
  *  restore: string
  *  addAll: string
  *  removeAll: string
@@ -81,6 +81,7 @@
  * @typedef RecordHomePageState
  * @type {{
  *  record: string
+ *  record_selected: boolean
  *  $addRemoveLink: JQuery
  *  visible: Object<string, boolean>
  * }}
@@ -94,4 +95,9 @@
 /**
  * @typedef ManyInstances
  * @type {Object<string, Object<string, boolean>>}
+ */
+
+/**
+ * @typedef UpdateDiff
+ * @type {Object<string, boolean>}
  */

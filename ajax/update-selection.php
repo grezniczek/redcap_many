@@ -16,10 +16,19 @@ class ManyEM_ClearSelectionAjax
                 break;
             }
         }
-        $selected = json_decode($payload, true);
+        $update = json_decode($payload, true);
 
-        $module->updateSelection($selected);
-        print json_encode($selected);
+        switch ($update["command"]) {
+            case "update-records":
+            case "add-all-records":
+                $module->updateRecords($update["diff"]);
+                break;
+            case "remove-all-records":
+                $module->clearRecords();
+                break;
+        }
+
+        print json_encode(array("success" => true));
     }
 }
 ManyEM_ClearSelectionAjax::execute($module);

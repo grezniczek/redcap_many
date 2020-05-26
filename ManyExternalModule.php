@@ -59,7 +59,7 @@ class ManyExternalModule extends AbstractExternalModule {
         $ih->js("js/many-em.js");
         $ih->css("css/many-em.css");
 
-        $dto_selected = $this->loadSelected($project_id);
+        $dto_selected = $this->loadSelectedRecords($project_id);
 
         // Link to plugin page in the Data Collection menu.
         $href = $this->getUrl("many.php");
@@ -77,7 +77,7 @@ class ManyExternalModule extends AbstractExternalModule {
         $dto_rsd = array(
             "init" => strpos(PAGE, "DataEntry/record_status_dashboard.php") !== false,
             "activate" => $this->getProjectSetting("rsd-active") === true,
-            "updateSelection" => "Update selection", // tt-fy
+            "apply" => "Apply", // tt-fy
             "restore" => "Restore", // tt-fy
             "addAll" => "Add all", // tt-fy
             "removeAll" => "Remove all", // tt-fy
@@ -127,19 +127,36 @@ class ManyExternalModule extends AbstractExternalModule {
     }
 
 
-    private function loadSelected($pid) {
+    private function loadSelectedRecords($pid) {
         return isset($_SESSION[self::MANY_EM_SESSION_KEY][$pid]) ?
             $_SESSION[self::MANY_EM_SESSION_KEY][$pid] : 
             array();
     }
 
-    private function saveSelected($pid, $selected) {
+    private function saveSelectedRecords($pid, $selected) {
         $_SESSION[self::MANY_EM_SESSION_KEY][$pid] = $selected;
     }
 
-    public function updateSelection($selected) {
+    public function updateRecords($diff) {
         $pid = $this->getProjectId();
-        $this->saveSelected($pid, $selected);
+        $records = $this->loadSelectedRecords($pid);
+        foreach ($diff as $record_id => $is_selected) {
+            if ($is_selected) {
+                array_push($records, "$record_id");
+            }
+            else {
+                $pos = array_search("$record_id", $records, true);
+                if ($pos !== false) {
+                    array_splice($records, $pos , 1);
+                }
+            }
+        }
+        $this->saveSelectedRecords($pid, array_unique($records, SORT_STRING));
+    }
+
+    public function clearRecords() {
+        $pid = $this->getProjectId();
+        $this->saveSelectedRecords($pid, array());
     }
 
 } // ManyExternalModule

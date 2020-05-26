@@ -13,8 +13,9 @@
     padding-right: 0.5em;
 }
 .many-em-menu-link-clear,
+.many-em-menu-link-restore,
 .many-em-menu-link-addremoverecord {
-    font-size: 0.8em !important;
+    font-size: 10px !important;
     margin: 0 0.2em;
 }
 
