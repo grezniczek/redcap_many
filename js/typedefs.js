@@ -18,6 +18,18 @@
  *  rsd: RecordStatusDashboardDTO
  *  rhp: RecordHomePageDTO
  *  updateUrl: string
+ *  userRights: UserRightsDTO
+ * }}
+ */
+
+/**
+ * @typedef UserRightsDTO
+ * @type {{
+ *  design: boolean
+ *  record_delete: boolean
+ *  lock_record: boolean
+ *  lock_record_multiform: boolean
+ *  data_access_groups: boolean
  * }}
  */
 
@@ -77,7 +89,7 @@
  * @type {{
  *  init: boolean
  *  activate: boolean
- *  rit: Object<string, string[]>
+ *  rit: Object<string, number[]>
  *  viewPresets: InstanceFieldPreset[]
  *  updatePresets: InstanceFieldPreset[],
  *  deleteConfirmTitle: string
@@ -113,7 +125,7 @@
 
 /**
  * @typedef ManyInstances
- * @type {Object<string, Object<string, boolean>>}
+ * @type {Object<string, Object<number, boolean>>}
  */
 
 

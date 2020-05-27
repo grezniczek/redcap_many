@@ -256,7 +256,7 @@ function applyRHPinstances(rit) {
             manyInstances[rit] = {}
         }
         var checked = $cb.prop('checked')
-        var instance = $cb.attr('data-many-em-instance')
+        var instance = parseInt($cb.attr('data-many-em-instance'))
         manyInstances[rit][instance] = checked
         diff[instance] = checked
         if (checked) count++
@@ -273,6 +273,10 @@ function applyRHPinstances(rit) {
     updateRepeatInstrumentToolbar()
 }
 
+/**
+ * Toggles display of the repeat instance table menu
+ * @param {string} rit repeat_instrument_table-event_id-form_name
+ */
 function toggleRepeatInstrumentTableMenu(rit) {
     rhpState.visible[rit] = !rhpState.visible[rit]
     if (rhpState.visible[rit]) {
@@ -316,7 +320,7 @@ function buildRepeatInstrumentTableMenu(rit) {
         $rit.find('td.labelrc').each(function() {
             var $td = $(this)
             var $tr = $td.parent()
-            var instance = $td.text().trim()
+            var instance = parseInt($td.text())
             $td.after('<td style="display:none;" class="labelrc many-em-checkbox-col many-em-toggle-display"><div class="many-em-checkbox-wrapper"><input type="checkbox"></div></td>')
             var $cb = $tr.find('input[type=checkbox]')
             $cb.attr('data-many-em-instance', instance)
@@ -387,12 +391,14 @@ function buildRepeatInstrumentToolbar() {
                 .append('<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split many-em-dropdown-toggle-update" data-toggle="dropdown"></button')
                 .append('<div class="dropdown-menu many-em-dropdown-update"></div>')
             )
-            // Delete
-            .append($('<button class="btn btn-xs btn-danger many-em-toolbar-button"></button>')
-                .text('Delete') // tt-fy
-                .on('click', showDeleteInstances)
-            )
         )
+    if (DTO.userRights.record_delete) {
+        // Delete
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger many-em-toolbar-button"></button>')
+            .text('Delete') // tt-fy
+            .on('click', showDeleteInstances)
+        )
+    }
     // Add view and update presets
     var $viewPresets = $tb.find('.many-em-dropdown-view')
     DTO.rhp.viewPresets.forEach(function(preset) {
@@ -437,21 +443,25 @@ function updateInstances(e) {
  */
 function showDeleteInstances() {
     // Get confirmation
-    var $modal = $('.many-em-delete-confirmation-modal')
-    $modal.find('.modal-title').html(DTO.rhp.deleteConfirmTitle)
-    $modal.find('.modal-body').html(DTO.rhp.deleteConfirmText)
-    $modal.attr('data-many-em-action', 'delete-instances')
-    $modal.modal('show')
+    if (DTO.userRights.record_delete) {
+        var $modal = $('.many-em-delete-confirmation-modal')
+        $modal.find('.modal-title').html(DTO.rhp.deleteConfirmTitle)
+        $modal.find('.modal-body').html(DTO.rhp.deleteConfirmText)
+        $modal.attr('data-many-em-action', 'delete-instances')
+        $modal.modal('show')
+    }
 }
 
 /**
  * Deletes all selected instances and reloads the page
  */
 function deleteInstances() {
-    log('Many EM - Deleting instances:', manyInstances)
-    // Disable buttons.
-    $('.many-em-delete-confirmation-modal button').prop('disabled', true)
-    updateServerInstances('delete-record-instances', '--', null, deletedInstances, deleteInstancesFailed)
+    if (DTO.userRights.record_delete) {
+        log('Many EM - Deleting instances:', manyInstances)
+        // Disable buttons.
+        $('.many-em-delete-confirmation-modal button').prop('disabled', true)
+        updateServerInstances('delete-record-instances', '--', null, deletedInstances, deleteInstancesFailed)
+    }
 }
 
 function deletedInstances() {
@@ -480,7 +490,7 @@ function restoreInstances() {
         $rit.find('input.many-em-toggle-all').prop('checked', false)
         $rit.find('input[data-many-em-instance]').each(function() {
             var $cb = $(this)
-            var instance = $cb.attr('data-many-em-instance')
+            var instance = parseInt($cb.attr('data-many-em-instance'))
             $cb.prop('checked', typeof manyInstances[rit] != 'undefined' && manyInstances[rit][instance] == true)
         })
     })
@@ -591,6 +601,9 @@ function addRemoveRecord(override) {
     diff[rhpState.record] = rhpState.record_selected
     if (rhpState.record_selected) {
         $('.many-em-rit').show(100)
+        if (DTO.rhp.activate) {
+            $('.many-em-toggle-display').show()
+        }
     }
     else {
         // Clear all instances

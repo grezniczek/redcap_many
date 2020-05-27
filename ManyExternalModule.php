@@ -12,10 +12,36 @@ class ManyExternalModule extends AbstractExternalModule
     private const MANY_EM_SESSION_KEY_RECORDS = "many-em-selection-store-records";
     private const MANY_EM_SESSION_KEY_INSTANCES = "many-em-selection-store-instances";
 
-    function redcap_every_page_before_render($project_id)
-    {
+    function redcap_every_page_before_render($project_id) {
 
         // Can we show fake data entry pages?
+        if (PAGE == "DataEntry/index.php") {
+            // Remove form instance from the selection?
+            if ($_POST["submit-action"] == "submit-btn-deleteform") {
+                $record_id = $_POST["record_id"];
+                $instance = $_GET["instance"];
+                $event_id = $_GET["event_id"];
+                $form = $_GET["page"];
+                if ($this->isInstanceSelected($project_id, $record_id, $event_id, $form, $instance))
+                {
+                    $this->updateInstances($record_id, $event_id, $form, array (
+                        $instance => false
+                    ));
+                }
+            }
+        }
+        // Remove a record from the selection?
+        if (PAGE == "DataEntryController:deleteRecord") {
+            
+            $record_id = $_POST["record"];
+            $this->deleteSelectedInstancesForRecord($project_id, $record_id);
+            $this->updateRecords(array(
+                $record_id => false
+            ));
+        }
+
+
+
         if (PAGE == "DataEntry/index.php") {
             global $Proj;
 
@@ -116,7 +142,7 @@ class ManyExternalModule extends AbstractExternalModule
                 foreach ($repeating["forms"] as $event_id => $forms) {
                     foreach ($forms as $form) {
                         $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
-                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, "$event_id", $form);
+                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $event_id, $form);
                     }
                 }
                 $this->includeDeleteConfirmationModal();
@@ -131,6 +157,16 @@ class ManyExternalModule extends AbstractExternalModule
             )
         );
 
+        // User rights - TODO
+        global $user_rights;
+        $dto_user_rights = array(
+            "design" => $user_rights["design"] != 0,
+            "record_delete" => $user_rights["record_delete"] != 0,
+            "lock_record" => $user_rights["lock_record"] != 0,
+            "lock_record_multiform" => $user_rights["lock_record_multiform"] != 0,
+            "data_access_groups" => $user_rights["data_access_groups"] != 0,
+        );
+
 
         // Transfer data to the JavaScript implementation.
 ?>
@@ -143,6 +179,7 @@ class ManyExternalModule extends AbstractExternalModule
             DTO.selected = <?= json_encode($dto_selected) ?>;
             DTO.rsd = <?= json_encode($dto_rsd) ?>;
             DTO.rhp = <?= json_encode($dto_rhp) ?>;
+            DTO.userRights = <?= json_encode($dto_user_rights) ?>;
         </script>
     <?php
     }
@@ -150,13 +187,30 @@ class ManyExternalModule extends AbstractExternalModule
 
 
 
-
+    /**
+     * Deletes all currently selected repeating form instances of the given record.
+     * @param string $record_id
+     */
     function deleteRecordInstances($record_id) {
         $pid = $this->getProjectId();
-        $instances = $this->loadSelectedInstances($pid, $record_id);
-
-        // TODO - delete 
-        
+        $selected = $this->loadSelectedInstances($pid, $record_id);
+        // [
+        //   event_id => [
+        //     form_name => [ 
+        //       instance_number,
+        //       ...
+        //     ]
+        //   ]
+        // ]
+        if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
+        /** @var \DE\RUB\Utility\Project */
+        $project = Project::load($this->framework, $pid);
+        $record = $project->getRecord($record_id);
+        foreach ($selected as $event_id => $forms) {
+            foreach ($forms as $form => $instances) {
+                $record->deleteFormInstances($form, $event_id, $instances);
+            }
+        }
     }
 
 
@@ -242,6 +296,10 @@ class ManyExternalModule extends AbstractExternalModule
         $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
     }
 
+    private function isInstanceSelected($pid, $record_id, $event_id, $form, $instance) {
+        return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form][$instance]);
+    }
+
     private function deleteSelectedInstancesForRecord($pid, $record_id)
     {
         unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
@@ -258,15 +316,15 @@ class ManyExternalModule extends AbstractExternalModule
         $instances = $this->loadSelectedInstances($pid, $record_id, $event_id, $form);
         foreach ($diff as $instance => $is_selected) {
             if ($is_selected) {
-                array_push($instances, "$instance");
+                array_push($instances, $instance);
             } else {
-                $pos = array_search("$instance", $instances, true);
+                $pos = array_search($instance, $instances, true);
                 if ($pos !== false) {
                     array_splice($instances, $pos, 1);
                 }
             }
         }
-        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_values(array_unique($instances, SORT_STRING)));
+        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_values(array_unique($instances, SORT_NUMERIC)));
     }
 
     public function clearInstances($record_id, $event_id, $form)
@@ -308,4 +366,5 @@ class ManyExternalModule extends AbstractExternalModule
         </div>
         <?php
     }
+
 } // ManyExternalModule

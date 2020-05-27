@@ -93,6 +93,146 @@ class Record
     }
 
     /**
+     * Deletes form instances.
+     * 
+     * @param string $form The form name (it must exist and be a repeating form).
+     * @param string $event The name or (numerical) id of the event.
+     * @param array $instances An array of the instance numbers to delete.
+     * @throws Exception An exception is thrown in case of project data structure violations.
+     */
+    public function deleteFormInstances($form, $event, $instances) {
+        // Check event.
+        if (!$this->project->hasEvent($event)) {
+            throw new \Exception("Event '{$event}' does not exist in project '{$this->project->getProjectId()}'.");
+        }
+        // Check form.
+        if (!$this->project->hasForm($form) && !$this->project->isFormRepeating($form, $event)) {
+            throw new \Exception("Form '{$form}' does not exist or is not repeating in event '{$event}'.");
+        }
+        // Check instance
+        foreach ($instances as $instance) {
+            if (!is_integer($instance)|| $instances < 1) {
+                throw new \Exception("Invalid instance '{$instance}'. Must be an integer > 0.");
+            }
+        }
+        $event_id = $this->project->getEventId($event);
+
+        global $user_rights;
+
+        // Code from DataEntry/index.php
+            // DELETE ALL DATA ON SINGLE FORM ONLY
+
+            // elseif ($user_rights['record_delete'] && $_POST['submit-action'] == "submit-btn-deleteform")
+            // {
+            //     // Set any File Upload fields as deleted in the edocs table
+            //     if ($Proj->hasFileUploadFields) {
+            //         $sql = "update redcap_metadata m, redcap_data d, redcap_edocs_metadata e
+            //                 set e.delete_date = '".NOW."' where m.project_id = $project_id
+            //                 and m.project_id = d.project_id and e.project_id = m.project_id and m.element_type = 'file'
+            //                 and d.field_name = m.field_name and d.value = e.doc_id and m.form_name = '".db_escape($_GET['page'])."'
+            //                 and d.event_id = {$_GET['event_id']} and d.record = '".db_escape($fetched.$entry_num)."'" .
+            //                 ($Proj->hasRepeatingFormsEvents() ? " AND d.instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
+            //         db_query($sql);
+            //     }
+            //     // Get list of all fields with data for this record on this form
+            //     $sql = "select distinct field_name from redcap_data where project_id = $project_id
+            //             and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
+            //             and field_name in (" . prep_implode(array_keys($Proj->forms[$_GET['page']]['fields'])) . ") and field_name != '$table_pk'" .
+            //             ($Proj->hasRepeatingFormsEvents() ? " AND instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
+            //     $q = db_query($sql);
+            //     $eraseFields = $eraseFieldsLogging = array();
+            //     while ($row = db_fetch_assoc($q)) {
+            //         // Add to field list
+            //         $eraseFields[] = $row['field_name'];
+            //         // Add default data values to logging field list
+            //         if ($Proj->isCheckbox($row['field_name'])) {
+            //             foreach (array_keys(parseEnum($Proj->metadata[$row['field_name']]['element_enum'])) as $this_code) {
+            //                 $eraseFieldsLogging[] = "{$row['field_name']}($this_code) = unchecked";
+            //             }
+            //         } else {
+            //             $eraseFieldsLogging[] = "{$row['field_name']} = ''";
+            //         }
+            //     }
+            //     // Delete all responses from data table for this form (do not delete actual record name - will keep same record name)
+            //     $sql = "delete from redcap_data where project_id = $project_id
+            //             and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
+            //             and field_name in (" . prep_implode($eraseFields) . ")" .
+            //             ($Proj->hasRepeatingFormsEvents() ? " AND instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
+            //     db_query($sql);
+            //     // Longitudinal projects only
+            //     $sql3 = "";
+            //     if ($longitudinal) {
+            //         // Check if all forms on this event/instance have gray status icon (implying that we just deleted the only form with data for this event)
+            //         $formStatusValues = Records::getFormStatus(PROJECT_ID, array($fetched.$entry_num), null, null, array($_GET['event_id']=>$Proj->eventsForms[$_GET['event_id']]));
+            //         $allFormsDeletedThisEvent = true;
+            //         foreach ($formStatusValues[$fetched.$entry_num][$_GET['event_id']] as $this_form) {
+            //             if (!empty($this_form)) {
+            //                 $allFormsDeletedThisEvent = false;
+            //                 break;
+            //             }
+            //         }
+            //         if ($allFormsDeletedThisEvent) {
+            //             // Now check to see if other events/instances for this record have data
+            //             $sql = "select 1 from redcap_data where project_id = $project_id
+            //                     and !(event_id = {$_GET['event_id']} and instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'").") 
+            //                     and record = '".db_escape($fetched.$entry_num)."' limit 1";
+            //             $q = db_query($sql);
+            //             $otherEventsHaveData = (db_num_rows($q) > 0);
+            //             if ($otherEventsHaveData) {
+            //                 // Since other events have data for this record, we should go ahead and remove ALL data from this event 
+            //                 // (because we might have __GROUPID__ and record ID field stored on backend for this event still)
+            //                 $sql3 = "delete from redcap_data where project_id = $project_id
+            //                         and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
+            //                         and instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'");
+            //                 db_query($sql3);
+            //             }
+            //         }
+            //     }
+            //     // If this form is a survey, then set all survey response timestamps to NULL (or delete row if a non-first repeating instance)
+            //     $sql2 = "";
+            //     if ($surveys_enabled && isset($Proj->forms[$_GET['page']]['survey_id'])) 
+            //     {
+            //         $sql2 = "update redcap_surveys_participants p, redcap_surveys_response r
+            //                 set r.first_submit_time = null, r.completion_time = null
+            //                 where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
+            //                 and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}";
+            //         db_query($sql2);
+            //         // For repeating instruments/events, remove this instance from participant list if instance > 1
+            //         $setNullTimestamps = true;
+            //         if ($_GET['instance'] > 1 && ($Proj->isRepeatingEvent($_GET['event_id']) || $Proj->isRepeatingForm($_GET['event_id'], $_GET['page']))) {
+            //             $sql3 = "select p.participant_id from redcap_surveys_participants p, redcap_surveys_response r
+            //                     where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
+            //                     and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}
+            //                     limit 1";
+            //             $q = db_query($sql3);
+            //             if (db_num_rows($q)) {
+            //                 $setNullTimestamps = false;
+            //                 $participant_id = db_result($q, 0);
+            //                 $sql2 = "delete from redcap_surveys_participants where participant_id = $participant_id";
+            //                 db_query($sql2);	
+            //             }
+            //         }
+            //         if ($setNullTimestamps) {
+            //             // If this form is a survey, then set all survey response timestamps to NULL (or 
+            //             $sql2 = "update redcap_surveys_participants p, redcap_surveys_response r
+            //                     set r.first_submit_time = null, r.completion_time = null
+            //                     where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
+            //                     and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}";
+            //             db_query($sql2);	
+            //         }
+            //     }
+            //     // Log the data change
+            //     $log_event_id = Logging::logEvent("$sql; $sql2; $sql3", "redcap_data", "UPDATE", $fetched.$entry_num, implode(",\n",$eraseFieldsLogging), "Delete all record data for single form",
+            //                                 "", "", "", true, null, $_GET['instance']);
+            //     // Reset Post array
+            //     $_POST = array('submit-action'=>$_POST['submit-action'], 'hidden_edit_flag'=>1);
+            // }
+
+
+
+    }
+
+    /**
      * Updates fields. 
      * The fields must all be on the same event and if repeating, 
      * on the same form (unless the event itself is repeating).

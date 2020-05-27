@@ -58,6 +58,9 @@ table.dataTable thead th.many-em-checkbox-col {
 .many-em-rit-toolbar {
     margin: 5px 0 0 5px;
 }
+.many-em-rit-toolbar .btn-toolbar-text {
+    font-size: 0.9em;
+}
 .many-em-toolbar-button {
     margin-left: 0.5em;
 }
