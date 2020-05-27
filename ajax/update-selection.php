@@ -31,6 +31,9 @@ class ManyEM_ClearSelectionAjax
             case "remove-all-instances":
                 $module->clearInstances($update["record"], $update["event"], $update["form"]);
                 break;
+            case "delete-record-instances":
+                $module->deleteRecordInstances($update["record"]);
+                break;
         }
 
         print json_encode(array("success" => true));

@@ -148,6 +148,23 @@ class ManyExternalModule extends AbstractExternalModule
     }
 
 
+
+
+
+    function deleteRecordInstances($record_id) {
+        $pid = $this->getProjectId();
+        $instances = $this->loadSelectedInstances($pid, $record_id);
+
+        // TODO - delete 
+        
+    }
+
+
+
+
+
+
+
     private function loadSelectedRecords($pid)
     {
         return isset($_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid]) ?
@@ -195,11 +212,23 @@ class ManyExternalModule extends AbstractExternalModule
         }
     }
 
-    private function loadSelectedInstances($pid, $record_id, $event_id, $form)
+    private function loadSelectedInstances($pid, $record_id, $event_id = null, $form = null)
     {
+        if ($form == null && $event_id == null) {
+            return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]) ?
+                $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id] :
+                array();
+        }
+        else if ($form == null) {
+            return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]) ?
+            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] :
+            array();
+        }
+        else {
         return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form]) ?
             $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] :
             array();
+        }
     }
 
     private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances)
@@ -272,7 +301,7 @@ class ManyExternalModule extends AbstractExternalModule
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?=$fw->tt("modal_cancel")?></button>
-                        <button type="button" class="btn btn-danger"><?=$fw->tt("modal_delete")?></button>
+                        <button type="button" class="btn btn-danger many-em-confirmed"><?=$fw->tt("modal_delete")?></button>
                     </div>
                 </div>
             </div>

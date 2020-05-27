@@ -263,10 +263,10 @@ function applyRHPinstances(rit) {
     })
     // Update server
     if (count == 0) {
-        updateServerInstances('remove-all-instances', rit, null)
+        updateServerInstances('remove-all-instances', rit, null, null, null)
     }
     else {
-        updateServerInstances('update-instances', rit, diff)
+        updateServerInstances('update-instances', rit, diff, null, null)
     }
     // Update counters
     $rit.find('.many-em-rit-instance-count').text(count)
@@ -390,7 +390,7 @@ function buildRepeatInstrumentToolbar() {
             // Delete
             .append($('<button class="btn btn-xs btn-danger many-em-toolbar-button"></button>')
                 .text('Delete') // tt-fy
-                .on('click', deleteInstances)
+                .on('click', showDeleteInstances)
             )
         )
     // Add view and update presets
@@ -433,12 +433,42 @@ function updateInstances(e) {
 }
 
 /**
- * Deletes the selected instances
+ * Asks for confirmation to delete all selected instances
+ */
+function showDeleteInstances() {
+    // Get confirmation
+    var $modal = $('.many-em-delete-confirmation-modal')
+    $modal.find('.modal-title').html(DTO.rhp.deleteConfirmTitle)
+    $modal.find('.modal-body').html(DTO.rhp.deleteConfirmText)
+    $modal.attr('data-many-em-action', 'delete-instances')
+    $modal.modal('show')
+}
+
+/**
+ * Deletes all selected instances and reloads the page
  */
 function deleteInstances() {
-    // Get confirmation
-    $('.many-em-delete-confirmation-modal').modal('show')
-    log('deleteInstances')
+    log('Many EM - Deleting instances:', manyInstances)
+    // Disable buttons.
+    $('.many-em-delete-confirmation-modal button').prop('disabled', true)
+    updateServerInstances('delete-record-instances', '--', null, deletedInstances, deleteInstancesFailed)
+}
+
+function deletedInstances() {
+    location.reload()
+}
+
+/**
+ * 
+ * @param {JQuery.jqXHR} jqXHR 
+ */
+function deleteInstancesFailed(jqXHR) {
+    var $modal = $('.many-em-delete-confirmation-modal button')
+    // Disable buttons.
+    $modal.prop('disabled', true)
+    $modal.find('.modal-body').append('Failed')
+    // TODO
+
 }
 
 /**
@@ -460,7 +490,7 @@ function restoreInstances() {
  * Removes all instances from the Instances Selection
  */
 function clearInstances() {
-    updateServerInstances('remove-all-instances', '--', null)
+    updateServerInstances('remove-all-instances', '--', null, null, null)
     manyInstances = {}
     restoreInstances()
     updateRepeatInstrumentToolbar()
@@ -537,6 +567,8 @@ function setupRecordHomePage() {
         $('.many-em-rit').show()
         updateRepeatInstrumentToolbar()
     }
+    // Hook up modal events
+    $('.many-em-delete-confirmation-modal button.many-em-confirmed').on('click', deletionConfirmed)
     // Remove max width - TODO - this is not perfect
     $('#repeating_forms_table_parent').children('div').css('max-width', '33%').css('flex', '0 0 33%')
 }
@@ -594,6 +626,18 @@ function determineRecordState() {
 
 //#endregion
 
+
+
+//#region -- Modal Events -----------------------------------------------------------------
+
+function deletionConfirmed() {
+    var action = $('.many-em-delete-confirmation-modal').attr('data-many-em-action')
+    if (action == 'delete-instances') {
+        deleteInstances()
+    }
+}
+
+//#endregion
 
 
 
@@ -725,8 +769,10 @@ function updateServerSelection(cmd, diff) {
  * @param {string} cmd 
  * @param {string} rit repeat_instrument_table-event_id-form_name
  * @param {UpdateDiff} diff 
+ * @param {function} callbackDone
+ * @param {function} callbackFail
  */
-function updateServerInstances(cmd, rit, diff) {
+function updateServerInstances(cmd, rit, diff, callbackDone, callbackFail) {
     var parts = rit.split('-')
     var data = {
         command: cmd,
@@ -735,6 +781,7 @@ function updateServerInstances(cmd, rit, diff) {
         form: parts[2],
         diff: diff
     }
+    log('Many EM - Ajax Initiated:', data)
     $.ajax({
         url: DTO.updateUrl,
         type: 'POST',
@@ -742,10 +789,12 @@ function updateServerInstances(cmd, rit, diff) {
         dataType: 'json'
     })
     .done(function(data, textStatus, jqXHR) {
-        log('Many EM - Instances update (' + rit + ').')
+        log('Many EM - Ajax Success:', jqXHR)
+        if (callbackDone) callbackDone()
     })
     .fail(function(jqXHR, textStatus, errorThrown) {
-        log(jqXHR, textStatus, errorThrown)
+        log('Many EM - Ajax Failure: ', jqXHR, textStatus, errorThrown)
+        if (callbackFail) callbackFail(jqXHR)
     })
 }
 
