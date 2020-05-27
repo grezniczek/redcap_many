@@ -55,3 +55,15 @@ table.dataTable thead th.many-em-checkbox-col {
 #repeating_forms_table_parent .many-em-checkbox-wrapper {
     margin-left: -3px;
 }
+.many-em-rit-toolbar {
+    margin: 5px 0 0 5px;
+}
+.many-em-toolbar-button {
+    margin-left: 0.5em;
+}
+.many-em-toolbar-link {
+    color: var(--dark);
+}
+.many-em-toolbar-link:hover {
+    color: red;
+}

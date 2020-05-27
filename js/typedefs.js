@@ -33,13 +33,6 @@
  * }}
  */
 
-/**
- * @typedef RecordHomePageDTO
- * @type {{
- *  init: boolean
- *  rit: Object<string, string[]>
- * }}
- */
 
 /**
  * @typedef RecordLinkDTO
@@ -77,6 +70,21 @@
  * }}
  */
 
+
+
+/**
+ * @typedef RecordHomePageDTO
+ * @type {{
+ *  init: boolean
+ *  activate: boolean
+ *  rit: Object<string, string[]>
+ *  viewPresets: InstanceFieldPreset[]
+ *  updatePresets: InstanceFieldPreset[],
+ *  deleteConfirmTitle: string
+ *  deleteConfirmText: string
+ * }}
+ */
+
 /**
  * @typedef RecordHomePageState
  * @type {{
@@ -88,6 +96,17 @@
  */
 
 /**
+ * @typedef InstanceFieldPreset
+ * @type {{
+ *  id: string
+ *  name: string
+ *  fields: string[]
+ * }}
+ */
+
+
+
+/**
  * @typedef ManyRecords
  * @type {Object<string, boolean>}
  */
@@ -96,6 +115,9 @@
  * @typedef ManyInstances
  * @type {Object<string, Object<string, boolean>>}
  */
+
+
+
 
 /**
  * @typedef UpdateDiff

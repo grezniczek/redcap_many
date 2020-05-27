@@ -268,14 +268,23 @@ function applyRHPinstances(rit) {
     else {
         updateServerInstances('update-instances', rit, diff)
     }
-    // Update counter
+    // Update counters
     $rit.find('.many-em-rit-instance-count').text(count)
+    updateRepeatInstrumentToolbar()
 }
 
+function toggleRepeatInstrumentTableMenu(rit) {
+    rhpState.visible[rit] = !rhpState.visible[rit]
+    if (rhpState.visible[rit]) {
+        $('#' + rit + ' .many-em-toggle-display').show()
+    }
+    else {
+        $('#' + rit + ' .many-em-toggle-display').hide()
+    }
+}
 
 /**
- * Builds the UI for a repeating instrument
- * 
+ * Builds the UI for a repeating instrument table
  * @param {string} rit repeat_instrument_table-event_id-form_name
  */
 function buildRepeatInstrumentTableMenu(rit) {
@@ -286,7 +295,7 @@ function buildRepeatInstrumentTableMenu(rit) {
     if ($rit.length) {
         // Add menu
         $rit.find('span.repeat_event_count_menu').after(
-            $('<span class="many-em-rit" style="display:none;"></span>')
+            $('<div class="many-em-rit" style="display:none;"></div>')
                 .attr('data-many-em-event-id', event_id)
                 .attr('data-many-em-form-name', form_name)
                 .append(getManyIconHTML())
@@ -321,7 +330,12 @@ function buildRepeatInstrumentTableMenu(rit) {
             })
         })
         // Add extra row for select all checkbox
-        $rit.find('th').parent().after('<tr class="many-em-toggle-display" style="display:none;"><td class="labelrc">&nbsp;</td><td class="labelrc many-em-checkbox-col"><div class="many-em-checkbox-wrapper"><input type="checkbox" class="many-em-toggle-all"></div></td><td class="data"></td></tr>')
+        var $extraTR = $('<tr class="many-em-toggle-display" style="display:none;"><td class="labelrc">&nbsp;</td><td class="labelrc many-em-checkbox-col"><div class="many-em-checkbox-wrapper"><input type="checkbox" class="many-em-toggle-all"></div></td><td class="data"></td></tr>')
+        // Extra column?
+        for (var i = 1; i < $rit.find('td.data').first().parent().find('td.data').length; i++) {
+            $extraTR.append('<td class="data"></td>')
+        }
+        $rit.find('th').parent().after($extraTR)
         // Checking/unchecking the 'check all' checkbox should check/uncheck all others
         $rit.find('input.many-em-toggle-all').on('change', function(e) {
             var checked = $(e.target).prop('checked')
@@ -332,10 +346,151 @@ function buildRepeatInstrumentTableMenu(rit) {
 }
 
 /**
+ * Builds the repeating instrument toolbar
+ */
+function buildRepeatInstrumentToolbar() {
+    var $tb = $('<div class="many-em-rit many-em-rit-toolbar" style="display:none"></div>')
+        .appendTo('#repeating_forms_table_parent_title')
+        .append($('<div class="btn-toolbar" role="toolbar"></div>')
+            .append($('<div class="btn-toolbar-text"></div>')
+                .append(getManyIconHTML())
+                .append(' ' + DTO.name + ' ' + '<i>Instances</i> ')
+                .append('<span class="many-em-instances-total-count badge badge-secondary font-weight-normal">0</span>')
+                .append(' &ndash; ') // tt-fy
+            )
+            // Clear
+            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link"></button>')
+                .text('Clear') // tt-fy
+                .on('click', clearInstances)
+            )
+            .append(' | ')
+            // Restore
+            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link"></button>')
+                .text('Restore') // tt-fy
+                .on('click', restoreInstances)
+            )
+            // View
+            .append($('<div class="btn-group btn-group-xs"></div>')
+                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button"></button>')
+                    .html('View') // tt-fy
+                    .on('click', viewInstances)
+                )
+                .append('<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split many-em-dropdown-toggle-view" data-toggle="dropdown"></button')
+                .append('<div class="dropdown-menu many-em-dropdown-view"></div>')
+            )
+            // Update
+            .append($('<div class="btn-group btn-group-xs"></div>')
+                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button"></button>')
+                    .html('Update') // tt-fy
+                    .on('click', updateInstances)
+                )
+                .append('<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split many-em-dropdown-toggle-update" data-toggle="dropdown"></button')
+                .append('<div class="dropdown-menu many-em-dropdown-update"></div>')
+            )
+            // Delete
+            .append($('<button class="btn btn-xs btn-danger many-em-toolbar-button"></button>')
+                .text('Delete') // tt-fy
+                .on('click', deleteInstances)
+            )
+        )
+    // Add view and update presets
+    var $viewPresets = $tb.find('.many-em-dropdown-view')
+    DTO.rhp.viewPresets.forEach(function(preset) {
+        $viewPresets.append($('<a class="dropdown-item" href="javascript:;"></a>')
+        .text(preset.name)
+        .attr('data-many-em-preset-id', preset.id)
+        .on('click', viewInstances)
+        )
+    })
+    var $updatePresets = $tb.find('.many-em-dropdown-update')
+    DTO.rhp.updatePresets.forEach(function(preset) {
+        $updatePresets.append($('<a class="dropdown-item" href="javascript:;"></a>')
+            .text(preset.name)
+            .attr('data-many-em-preset-id', preset.id)
+            .on('click', updateInstances)
+        )
+    })
+}
+
+/**
+ * Show the view instances dialog
+ * @param {JQueryEventObject} e 
+ */
+function viewInstances(e) {
+    var presetId = e.target.getAttribute('data-many-em-preset-id')
+    
+    log('viewInstances for ' + presetId)
+}
+
+/**
+ * Show the update instances dialog
+ * @param {JQueryEventObject} e 
+ */
+function updateInstances(e) {
+    var presetId = e.target.getAttribute('data-many-em-preset-id')
+    
+    log('updateInstances for ' + presetId)
+}
+
+/**
+ * Deletes the selected instances
+ */
+function deleteInstances() {
+    // Get confirmation
+    $('.many-em-delete-confirmation-modal').modal('show')
+    log('deleteInstances')
+}
+
+/**
+ * Restores checkboxes to reflect the state in Instance Selection
+ */
+function restoreInstances() {
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        var $rit = $('#' + rit)
+        $rit.find('input.many-em-toggle-all').prop('checked', false)
+        $rit.find('input[data-many-em-instance]').each(function() {
+            var $cb = $(this)
+            var instance = $cb.attr('data-many-em-instance')
+            $cb.prop('checked', typeof manyInstances[rit] != 'undefined' && manyInstances[rit][instance] == true)
+        })
+    })
+}
+
+/**
+ * Removes all instances from the Instances Selection
+ */
+function clearInstances() {
+    updateServerInstances('remove-all-instances', '--', null)
+    manyInstances = {}
+    restoreInstances()
+    updateRepeatInstrumentToolbar()
+}
+
+/**
+ * Determines the number of total selected instances and updates the counter in the
+ * repeat instrument toolbar
+ */
+function updateRepeatInstrumentToolbar() {
+    var count = 0
+    Object.keys(manyInstances).forEach(function(rit) {
+        Object.keys(manyInstances[rit]).forEach(function(instance) {
+            if (manyInstances[rit][instance]) {
+                count++
+            }
+        })
+    })
+    $('.many-em-instances-total-count').text(count)
+    $('.many-em-toolbar-button').prop('disabled', count == 0)
+    $('.many-em-dropdown-toggle-view').prop('disabled', count == 0 || !DTO.rhp.viewPresets.length)
+    $('.many-em-dropdown-toggle-update').prop('disabled', count == 0 || !DTO.rhp.updatePresets.length)
+
+}
+
+/**
  * Adds Many UI to all repeating instrument tables
  */
 function setupRecordHomePage() {
-    // Setup UI for each repeating instrument
+    // Setup UI for each repeating instrument table
     Object.keys(DTO.rhp.rit).forEach(function(rit) {
         // Initialize Selected Instances store
         manyInstances[rit] = {}
@@ -351,13 +506,7 @@ function setupRecordHomePage() {
             var command = this.getAttribute('data-many-em-action')
             switch(command) {
                 case 'toggle': {
-                    rhpState.visible[rit] = !rhpState.visible[rit]
-                    if (rhpState.visible[rit]) {
-                        $rit.find('.many-em-toggle-display').show()
-                    }
-                    else {
-                        $rit.find('.many-em-toggle-display').hide()
-                    }
+                    toggleRepeatInstrumentTableMenu(rit)
                     break
                 }
                 case 'apply': {
@@ -378,12 +527,18 @@ function setupRecordHomePage() {
         })
         // Update count
         $rit.find('.many-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
+        if (DTO.rhp.activate) toggleRepeatInstrumentTableMenu(rit)
     })
+    // Build the repeating instruments toolbar
+    buildRepeatInstrumentToolbar()
     // Is the record in the selection?
     rhpState.record_selected = manyRecords[rhpState.record] == true
     if (rhpState.record_selected) {
         $('.many-em-rit').show()
+        updateRepeatInstrumentToolbar()
     }
+    // Remove max width - TODO - this is not perfect
+    $('#repeating_forms_table_parent').children('div').css('max-width', '33%').css('flex', '0 0 33%')
 }
 
 /**
