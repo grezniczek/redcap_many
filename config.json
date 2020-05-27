@@ -23,8 +23,13 @@
             "type": "checkbox"
         },
         {
-            "name": "Activate Many on Record Status Dashboard by default",
+            "name": "Activate Many on the <i>Record Status Dashboard</i> by default",
             "key": "rsd-active",
+            "type": "checkbox"
+        },
+        {
+            "name": "Activate Many for Repeating Instruments on the <i>Record Home Page</i> by default",
+            "key": "rhp-active",
             "type": "checkbox"
         }
     ],
