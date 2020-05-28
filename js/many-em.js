@@ -567,7 +567,7 @@ function setupRecordHomePage() {
         })
         // Update count
         $rit.find('.many-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
-        if (DTO.rhp.activate) toggleRepeatInstrumentTableMenu(rit)
+        if (DTO.rhp.activate && rhpState.record_selected) toggleRepeatInstrumentTableMenu(rit)
     })
     // Build the repeating instruments toolbar
     buildRepeatInstrumentToolbar()
