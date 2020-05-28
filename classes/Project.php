@@ -1,11 +1,15 @@
 <?php namespace DE\RUB\ManyExternalModule;
 
+use \Project as REDCapProject;
+
 class Project
 {
     /** @var \ExternalModules\Framework The EM framework */
     private $framework;
     /** @var int The project id */
     private $project_id;
+    /** @var REDCapProject */
+    private $proj;
 
     public static function load($framework, $project_id) {
         return new Project($framework, $project_id);
@@ -14,15 +18,64 @@ class Project
     function __construct($framework, $project_id){
         $this->framework = $framework;
         $this->project_id = $framework->requireInteger($project_id);
+        // Get REDCap's Project instance.
+        if (isset($GLOBALS["Proj"]) && $GLOBALS["Proj"]->project_id === $this->project_id) {
+            $this->proj = $GLOBALS["Proj"];
+        }
+        else {
+            $this->proj = new REDCapProject($project_id);
+        }
+        $this->proj->getUniqueEventNames();
+    }
+
+
+    #region -- Project Properties ----------------------------------------------------
+    
+    /**
+     * Gets the project id.
+     * @return int
+     */
+    public function getProjectId() {
+        return $this->project_id;
+    }
+    
+    /**
+     * Indicates whether the project is longitudinal.
+     * @return boolean
+     */
+    public function isLongitudinal() {
+        return $this->proj->longitudinal == true;
     }
 
     /**
-     * Gets the project id.
-     * @return int The project id.
+     * Gets the name of the record id field.
+     * @return string
      */
-    function getProjectId() {
-        return $this->project_id;
+    public function getRecordIdField() {
+        return $this->proj->table_pk;
     }
+
+    /**
+     * Gets the number of arms in the project.
+     * @return int
+     */
+    public function getNumArms() {
+        return $this->proj->numArms;
+    }
+
+    /**
+     * Gets the number of events in the project.
+     * @return int
+     */
+    public function getNumEvents() {
+        return $this->proj->numEvents;
+    }
+
+
+    #endregion
+
+
+    #region -- Records ---------------------------------------------------------------
 
     /**
      * Gets an instance of the Record class.
@@ -33,52 +86,41 @@ class Project
         return new Record($this->framework, $this, $record_id);
     }
 
+    #endregion
 
-    /**
-     * Gets the name of the record id field.
-     * 
-     * @return string
-     */
-    function recordIdField() {
-        $pds = $this->getProjectDataStructure();
-        return $pds["record_id"];
-    }
+
+    #region -- Events ----------------------------------------------------------------
 
     /**
      * Checks whether an event exists in the project.
-     * @param string $event The event name or numerical event id.
+     * @param mixed $event The unique name or numerical id of the event
      * @return boolean
      */
-    function hasEvent($event) {
-        $event = "{$event}";
-        $pds = $this->getProjectDataStructure();
-        if (is_numeric($event) && is_int($event * 1)) {
-            return isset($pds["events"][$event]);
+    public function hasEvent($event) {
+        if (is_int($event * 1)) {
+            return array_key_exists($event * 1, $this->proj->eventInfo);
         }
         else {
-            foreach ($pds["events"] as $_ => $data) {
-                if ($data["name"] == $event) return true;
-            }
+            return in_array($event, array_values($this->proj->uniqueEventNames), true);
         }
-        return false;
     }
 
     /**
      * Gets the event id.
      * If the event does not exist, null will be returned.
-     * 
-     * @param string $event The event name or (numerical) event id.
-     * @return string|null 
+     * @param mixed $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @return integer|null 
      */
-    function getEventId($event) {
-        $event = "{$event}";
-        $pds = $this->getProjectDataStructure();
-        if (is_numeric($event) && is_int($event * 1) && isset($pds["events"][$event])) {
-            return $event;
+    public function getEventId($event = null) {
+        if ($event === null && $this->isLongitudinal()) {
+            return $this->proj->firstEventId;
         }
-        else {
-            foreach ($pds["events"] as $_ => $data) {
-                if ($data["name"] == $event) return $data["id"];
+        if ($this->hasEvent($event)) {
+            if (is_int($event * 1)) {
+                return $event * 1;
+            }
+            else {
+                return $this->proj->getEventIdUsingUniqueEventName($event);
             }
         }
         return null;
@@ -87,75 +129,107 @@ class Project
     /**
      * Checks whether the event is a repeating event.
      * If the event does not exist, null will be returned.
-     * 
-     * @param string $event The event name or (numerical) event id.
+     * @param string $event The unique name or the numerical id of the event 
      * @return boolean|null 
      */
-    function isEventRepeating($event) {
+    public function isEventRepeating($event) {
         $event_id = $this->getEventId($event);
-        if ($event_id !== null) {
-            $pds = $this->getProjectDataStructure();
-            return $pds["events"][$event_id]["repeating"];
+        return $event_id === null ? 
+            null : $this->proj->isRepeatingEvent($event_id);
+    }
+
+    #endregion
+
+
+    #region -- Forms -----------------------------------------------------------------
+
+    /**
+     * Checks whether a form exists in the project.
+     * @param string $form The unique form name
+     * @return boolean
+     */
+    public function hasForm($form) {
+        return array_key_exists($form, $this->proj->form);
+    }
+
+    /**
+     * Gets the name of the form the field is on.
+     * Returns null if the field does not exist.
+     * @param string $field The field name
+     * @return string
+     */
+    public function getFormByField($field) {
+        $metadata = @$this->proj->metadata[$field];
+        return empty($metadata) ? null : $metadata["form_name"];
+    }
+
+    /**
+     * Checks whether a form is on a specific event.
+     * If the form or event does not exist, null is returned.
+     * @param string $form The unique form name
+     * @param string $event The unique event name or the (numerical) event id (can be omitted on non-longitudinal projects)
+     * @return boolean|null
+     */
+    public function isFormOnEvent($form, $event = null) {
+        $event_id = $this->getEventId($event);
+        if ($event_id !== null && $this->hasForm($form)) {
+            return array_search($form, $this->proj->eventsForms[$event_id]) !== false;
         }
         return null;
     }
 
     /**
-     * Checks whether a form exists in the project.
-     * @param string $form The form name.
-     * @return boolean
+     * Checks whether a form is repeating.
+     * If the form or event does not exist, null is returned.
+     * @param string $form The unique form name
+     * @param string $event The unique event name or (numerical) event id (can be omitted in non-longitudianl projects)
+     * @return boolean|null
      */
-    function hasForm($form) {
-        $pds = $this->getProjectDataStructure();
-        return isset($pds["forms"][$form]);
+    public function isFormRepeating($form, $event = null) {
+        $event_id = $this->getEventId($event);
+        if ($event_id !== null && $this->isFormOnEvent($form, $event_id)) {
+            return $this->proj->isRepeatingForm($event_id, $form);
+        }
+        return null;
     }
+
+    #endregion
+
+
+    #region -- Fields ----------------------------------------------------------------
 
     /**
      * Checks whether a field exists in the project.
-     * @param string $field The field name.
+     * @param string $field The unique field name
      * @return boolean
      */
-    function hasField($field) {
-        $pds = $this->getProjectDataStructure();
-        return isset($pds["fields"][$field]);
+    public function hasField($field) {
+        return array_key_exists($field, $this->proj->metadata);
     }
 
     /**
-     * Gets the name of the form the field is on.
-     * @param string $field The field name.
-     * @return string The name of the form (or null).
-     */
-    function getFormByField($field) {
-        $pds = $this->getProjectDataStructure();
-        return @$pds["fields"][$field]["form"];
-    }
-
-    /**
-     * Checks whether fields exist and are all fields are on the same form.
+     * Checks whether fields exist and are all on the same form.
+     * If so, the name of the form is returned, otherwise false.
      * In case of an empty field list, false is returned.
-     * 
      * @param array $fields List of field names.
      * @return string|boolean Form name or false.
      */
-    function areFieldsOnSameForm($fields) {
-        $ok = count($fields) > 0;
-        $form = $this->getFormByField($fields[0]);
-        $ok = $ok && !empty($form);
+    public function areFieldsOnSameForm($fields) {
+        $forms = array();
         foreach ($fields as $field) {
-            $ok = $ok && $this->getFormByField($field) == $form;
+            $forms[$this->getFormByField($field)] = null;
         }
-        return $ok ? $form : false;
+        return count($forms) == 1 ? array_key_first($forms) : false;
     }
 
     /**
      * Checks whether a field is on a repeating form.
      * If the field or event does not exists, null is returned.
-     * 
-     * @param string $field The field name.
-     * @param strign $event The event name or (numerical) event id.
+     * @param string $field The field name
+     * @param strign $event The unique event name or (numerical) event id (can be omitted in non-longitudinal projects)
      * @return boolean|null
      */
-    function isFieldOnRepeatingForm($field, $event) {
+    public function isFieldOnRepeatingForm($field, $event = null) {
         if ($this->hasField($field)) {
             $form = $this->getFormByField($field);
             return $this->isFormRepeating($form, $event);
@@ -165,57 +239,39 @@ class Project
 
     /**
      * Checks whether a field is on a specific event.
-     * If the field does not exists, false is returned.
-     * 
+     * If the field or event does not exists, null is returned.
      * @param string $field The field name.
-     * @param strign $event The event name or (numerical) event id.
+     * @param strign $event The unique event name or the (numerical) event id (can be omitted on non-longitudinal projects)
      * @return boolean|null
      */
-    function isFieldOnEvent($field, $event) {
+    public function isFieldOnEvent($field, $event = null) {
         $event_id = $this->getEventId($event);
         if ($event_id !== null && $this->hasField($field)) {
-            $pds = $this->getProjectDataStructure();
-            return array_key_exists($event_id, $pds["fields"][$field]["events"]);
+            return $this->isFormOnEvent($this->getFormByField($field), $event_id);
         }
         return null;
     }
 
-    /**
-     * Checks whether a form is repeating. 
-     * If the form or event does not exist, null is returned.
-     * 
-     * @param string $form The form name.
-     * @param string $event The event name or (numerical) event id.
-     * @return boolean|null
-     */
-    function isFormRepeating($form, $event) {
-        $event_id = $this->getEventId($event);
-        if ($event_id !== null && $this->isFormOnEvent($form, $event)) {
-            $pds = $this->getProjectDataStructure();
-            return $pds["events"][$event_id]["forms"][$form]["repeating"];
-        }
-        return null;
-    }
 
-    /**
-     * Checks whether a form is on a specific event. 
-     * If the form or event does not exist, false is returned.
-     * @param string $form The form name.
-     * @param string $event The event name or (numerical) event id.
-     * @return boolean 
-     */
-    function isFormOnEvent($form, $event) {
-        $pds = $this->getProjectDataStructure();
-        if ($this->hasForm($form) && $this->hasEvent($event)) {
-            if ($pds["longitudinal"]) {
-                $event_id = $this->getEventId($event);
-                return array_key_exists($event_id, $pds["forms"][$form]["events"]);
-            }
-            // In case of non-longitudinal projects, return true at this point
-            return true;
-        }
-        return false;
-    }
+
+    #endregion
+
+
+    #region -- Field Metadata --------------------------------------------------------
+
+
+
+
+
+
+    #endregion
+
+
+
+
+
+
+
 
     /**
      * Gets the field metadata.
@@ -428,17 +484,14 @@ class Project
         // Check cache.
         if (array_key_exists($pid, self::$ProjectDataStructureCache)) return self::$ProjectDataStructureCache[$pid];
 
-        // Use REDCap's Project class to get some of the data. Specifically, unique event names are not in the backend database.
-        $proj = new \Project($pid);
-        $proj->getUniqueEventNames();
-
         // Prepare return data structure.
         $ps = array(
             "pid" => $pid,
-            "longitudinal" => $proj->longitudinal,
-            "multiple_arms" => $proj->multiple_arms,
+            "project" => $this->proj,
+            "longitudinal" => $this->proj->longitudinal,
+            "multiple_arms" => $this->proj->multiple_arms,
             // Events are ordered by day_offset in redcap_events_metadata
-            "first_event_id" => array_key_first($proj->events[1]["events"]), 
+            "first_event_id" => array_key_first($this->proj->events[1]["events"]), 
             "record_id" => $this->framework->getRecordIdField($pid),
             "forms" => array(),
             "events" => array(),
@@ -463,43 +516,48 @@ class Project
         }
         $result = $this->framework->query($sql, $params);
         while ($row = $result->fetch_assoc()) {
-            $ps["arms"][$row["arm_id"]]["id"] = $row["arm_id"];
-            $ps["arms"][$row["arm_id"]]["events"][$row["event_id"]] = array(
-                "id" => $row["event_id"],
-                "name" => $proj->uniqueEventNames[$row["event_id"]]
+            $event_id = $row["event_id"] * 1;
+            $event_name = $proj->uniqueEventNames[$event_id];
+            $arm_id = $row["arm_id"] * 1;
+            $form_name = $row["form_name"];
+
+            $ps["arms"][$arm_id]["id"] = $arm_id;
+            $ps["arms"][$arm_id]["events"][$event_id] = array(
+                "id" => $event_id,
+                "name" => $event_name,
             );
-            $ps["arms"][$row["arm_id"]]["forms"][$row["form_name"]] = array(
-                "name" => $row["form_name"]
+            $ps["arms"][$arm_id]["forms"][$form_name] = array(
+                "name" => $form_name
             );
-            $ps["events"][$row["event_id"]]["id"] = $row["event_id"];
-            $ps["events"][$row["event_id"]]["name"] = $proj->uniqueEventNames[$row["event_id"]];
-            $ps["events"][$row["event_id"]]["repeating"] = false;
-            $ps["events"][$row["event_id"]]["arm"] = $row["arm_id"];
-            $ps["events"][$row["event_id"]]["forms"][$row["form_name"]] = array(
-                "name" => $row["form_name"],
+            $ps["events"][$event_id]["id"] = $event_id;
+            $ps["events"][$event_id]["name"] = $event_name;
+            $ps["events"][$event_id]["repeating"] = false;
+            $ps["events"][$event_id]["arm"] = $arm_id;
+            $ps["events"][$event_id]["forms"][$form_name] = array(
+                "name" => $form_name,
                 "repeating" => false
             );
-            $ps["forms"][$row["form_name"]]["name"] = $row["form_name"];
-            $ps["forms"][$row["form_name"]]["repeating"] = false;
-            $ps["forms"][$row["form_name"]]["repeating_event"] = false;
-            $ps["forms"][$row["form_name"]]["arms"][$row["arm_id"]] = array(
-                "id" => $row["arm_id"]
+            $ps["forms"][$form_name]["name"] = $form_name;
+            $ps["forms"][$form_name]["repeating"] = false;
+            $ps["forms"][$form_name]["repeating_event"] = false;
+            $ps["forms"][$form_name]["arms"][$arm_id] = array(
+                "id" => $arm_id
             );
-            $ps["forms"][$row["form_name"]]["events"][$row["event_id"]] = array(
-                "id" => $row["event_id"],
-                "name" => $proj->uniqueEventNames[$row["event_id"]],
+            $ps["forms"][$form_name]["events"][$event_id] = array(
+                "id" => $event_id,
+                "name" => $event_name,
                 "repeating" => false
             );
         }
         // Gather data - fields. Again, this could be got from $proj, but this is more straightforward to process.
         // TODO: Do indeed get this from Project. This is more complicated than it seems.
         
-        $result = $this->framework->query('
-            select field_name, form_name
+        $result = $this->framework->query("
+            SELECT field_name, form_name
             from redcap_metadata
             where project_id = ?
             order by field_order asc
-        ', $pid);
+        ", $pid);
         while ($row = $result->fetch_assoc()) {
             $ps["fields"][$row["field_name"]] = array(
                 "name" => $row["field_name"],
@@ -556,5 +614,7 @@ class Project
     }
 
     private static $ProjectDataStructureCache = array();
+
+
 
 }
