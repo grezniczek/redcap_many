@@ -517,7 +517,7 @@ class Project
         $result = $this->framework->query($sql, $params);
         while ($row = $result->fetch_assoc()) {
             $event_id = $row["event_id"] * 1;
-            $event_name = $proj->uniqueEventNames[$event_id];
+            $event_name = $this->proj->uniqueEventNames[$event_id];
             $arm_id = $row["arm_id"] * 1;
             $form_name = $row["form_name"];
 
@@ -604,7 +604,7 @@ class Project
         }
         // Augment fields with field metadata.
         foreach ($ps["fields"] as $field => &$field_data) {
-            $field_data["metadata"] = $proj->metadata[$field];
+            $field_data["metadata"] = $this->proj->metadata[$field];
         }
 
         // Add to cache.
