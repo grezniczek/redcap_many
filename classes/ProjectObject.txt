@@ -1,0 +1,1382 @@
+Project Object
+(
+    [project_id] => 49
+    [project] => Array
+        (
+            [project_id] => 49
+            [project_name] => stopwatch_em_test
+            [app_title] => Stopwatch EM Test
+            [status] => 0
+            [creation_time] => 2020-05-21 08:24:49
+            [production_time] => 
+            [inactive_time] => 
+            [completed_time] => 
+            [completed_by] => 
+            [data_locked] => 0
+            [log_event_table] => redcap_log_event2
+            [created_by] => 4
+            [draft_mode] => 0
+            [surveys_enabled] => 1
+            [repeatforms] => 1
+            [scheduling] => 0
+            [purpose] => 0
+            [purpose_other] => 
+            [show_which_records] => 0
+            [__SALT__] => c63d3691c0
+            [count_project] => 1
+            [investigators] => 
+            [project_note] => 
+            [online_offline] => 1
+            [auth_meth] => table
+            [double_data_entry] => 0
+            [project_language] => English
+            [project_encoding] => 
+            [is_child_of] => 
+            [date_shift_max] => 364
+            [institution] => 
+            [site_org_type] => 
+            [grant_cite] => 
+            [project_contact_name] => 
+            [project_contact_email] => 
+            [headerlogo] => 
+            [auto_inc_set] => 1
+            [custom_data_entry_note] => 
+            [custom_index_page_note] => 
+            [order_id_by] => 
+            [custom_reports] => 
+            [report_builder] => 
+            [disable_data_entry] => 0
+            [google_translate_default] => 
+            [require_change_reason] => 0
+            [dts_enabled] => 0
+            [project_pi_firstname] => 
+            [project_pi_mi] => 
+            [project_pi_lastname] => 
+            [project_pi_email] => 
+            [project_pi_alias] => 
+            [project_pi_username] => 
+            [project_pi_pub_exclude] => 
+            [project_pub_matching_institution] => 
+            [project_irb_number] => 
+            [project_grant_number] => 
+            [history_widget_enabled] => 1
+            [secondary_pk] => 
+            [secondary_pk_display_value] => 0
+            [secondary_pk_display_label] => 0
+            [custom_record_label] => 
+            [display_project_logo_institution] => 0
+            [imported_from_rs] => 0
+            [display_today_now_button] => 1
+            [auto_variable_naming] => 0
+            [randomization] => 0
+            [enable_participant_identifiers] => 0
+            [survey_email_participant_field] => 
+            [survey_phone_participant_field] => 
+            [data_entry_trigger_url] => 
+            [template_id] => 
+            [date_deleted] => 
+            [data_resolution_enabled] => 0
+            [field_comment_edit_delete] => 0
+            [realtime_webservice_enabled] => 0
+            [realtime_webservice_type] => CUSTOM
+            [realtime_webservice_offset_days] => 7
+            [realtime_webservice_offset_plusminus] => +-
+            [last_logged_event] => 2020-05-28 23:06:20
+            [survey_queue_custom_text] => 
+            [survey_auth_enabled] => 0
+            [survey_auth_field1] => 
+            [survey_auth_event_id1] => 
+            [survey_auth_field2] => 
+            [survey_auth_event_id2] => 
+            [survey_auth_field3] => 
+            [survey_auth_event_id3] => 
+            [survey_auth_min_fields] => 
+            [survey_auth_apply_all_surveys] => 1
+            [survey_auth_custom_message] => 
+            [survey_auth_fail_limit] => 
+            [survey_auth_fail_window] => 
+            [twilio_enabled] => 0
+            [twilio_modules_enabled] => SURVEYS
+            [twilio_account_sid] => 
+            [twilio_auth_token] => 
+            [twilio_from_number] => 
+            [twilio_voice_language] => en
+            [twilio_option_voice_initiate] => 0
+            [twilio_option_sms_initiate] => 0
+            [twilio_option_sms_invite_make_call] => 0
+            [twilio_option_sms_invite_receive_call] => 0
+            [twilio_option_sms_invite_web] => 0
+            [twilio_default_delivery_preference] => EMAIL
+            [twilio_request_inspector_checked] => 
+            [twilio_request_inspector_enabled] => 1
+            [twilio_append_response_instructions] => 1
+            [twilio_multiple_sms_behavior] => CHOICE
+            [two_factor_exempt_project] => 0
+            [two_factor_force_project] => 0
+            [disable_autocalcs] => 0
+            [custom_public_survey_links] => 
+            [pdf_custom_header_text] => 
+            [pdf_show_logo_url] => 1
+            [pdf_hide_secondary_field] => 0
+            [pdf_hide_record_id] => 0
+            [shared_library_enabled] => 1
+            [allow_delete_record_from_log] => 0
+            [delete_file_repository_export_files] => 0
+            [custom_project_footer_text] => 
+            [custom_project_footer_text_link] => 
+            [google_recaptcha_enabled] => 0
+            [datamart_allow_repeat_revision] => 0
+            [datamart_allow_create_revision] => 0
+            [datamart_enabled] => 0
+            [datamart_cron_enabled] => 0
+            [fhir_include_email_address_project] => 
+            [file_upload_vault_enabled] => 0
+            [file_upload_versioning_enabled] => 1
+            [missing_data_codes] => NA, Not applicable
+NAVU, Not available
+            [record_locking_pdf_vault_enabled] => 0
+            [record_locking_pdf_vault_custom_text] => 
+        )
+
+    [metadata] => Array
+        (
+            [record_id] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => record_id
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => Basic
+                    [field_order] => 1
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Record ID
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_int] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_int
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 2
+                    [field_units] => 
+                    [element_preceding_header] => Basic Stopwatch Uses
+                    [element_type] => text
+                    [element_label] => 
+1 Text Box, Integer (elapsed time in ms)
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => int
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_number] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_number
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 3
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => 
+2 Text Box, Number (elapsed time in seconds)
+
+ 
+Action Tag:
+@STOPWATCH={ "digits": 2, "hide_target": false }
+
+ 
+ 
+Limited to 2 decimal digit
+ 
+Input field explicitly shown
+ 
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => float
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH={
+  "digits": 2,
+  "hide_target": false
+}
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_number_comma] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_number_comma
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 4
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => 
+3 Text Box, Number w/comma (elapsed time in seconds)
+
+ 
+Action Tag:
+@STOPWATCH={ "digits": 1, "resume": true}
+
+ 
+ 
+Limited to 1 decimal digit
+ 
+Timer can be resumed after a stop
+ 
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => number_comma_decimal
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH={
+  "digits":1,
+  "resume": true,
+  "hide_target": true
+}
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_mm_ss] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_mm_ss
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 5
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => 
+4 Text Box, Time (MM:SS) 
+Note: no hours or milliseconds, capped at 59:59
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => time_mm_ss
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_text] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_text
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 6
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => 
+5 Text Box, no validation, text box shown
+
+ 
+Action Tag:
+@STOPWATCH={ "hide_target": false }
+
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH={ "hide_target": false }
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [sw_invalidtarget] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => sw_invalidtarget
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 7
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => yesno
+                    [element_label] => 
+6 Yes - No (this is an invalid target type)
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                    [element_enum] => 1, Yes \n 0, No
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [basic_complete] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => basic_complete
+                    [field_phi] => 
+                    [form_name] => basic
+                    [form_menu_description] => 
+                    [field_order] => 8
+                    [field_units] => 
+                    [element_preceding_header] => Form Status
+                    [element_type] => select
+                    [element_label] => Complete?
+                    [element_enum] => 0, Incomplete \n 1, Unverified \n 2, Complete
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [json_cap1] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => json_cap1
+                    [field_phi] => 
+                    [form_name] => json
+                    [form_menu_description] => JSON
+                    [field_order] => 9
+                    [field_units] => 
+                    [element_preceding_header] => Capture multiple time points
+                    [element_type] => textarea
+                    [element_label] => 
+7 Notes Box - Captures stored as JSON, can resume
+
+ 
+@STOPWATCH=
+{
+  "mode": "capture",
+  "resume": true,
+  "hide_target": false
+}
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH=
+{
+  "mode": "capture", 
+  "resume": true, 
+  "hide_target": false
+}
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [json_cap2] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => json_cap2
+                    [field_phi] => 
+                    [form_name] => json
+                    [form_menu_description] => 
+                    [field_order] => 10
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => textarea
+                    [element_label] => 
+8 Notes Box - Captures stored as JSON, no resume
+
+ 
+@STOPWATCH-CAPTURE
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH-CAPTURE
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [json_lap1] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => json_lap1
+                    [field_phi] => 
+                    [form_name] => json
+                    [form_menu_description] => 
+                    [field_order] => 11
+                    [field_units] => 
+                    [element_preceding_header] => Stopwatches for capturing laps
+                    [element_type] => textarea
+                    [element_label] => 
+9 Notes Box - Laps stored as JSON, no resume
+
+ 
+@STOPWATCH-LAP
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH-LAP
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [json_cap3] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => json_cap3
+                    [field_phi] => 
+                    [form_name] => json
+                    [form_menu_description] => 
+                    [field_order] => 12
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => textarea
+                    [element_label] => 
+10 Notes Box - Laps stored as JSON, no hours display, 2 digits, and showing cumlulated time
+
+ 
+@STOPWATCH-LAP=
+{
+  "cumulated": true,
+  "no_hours": true,
+  "display_format": "/m/g/s/d/f",
+  "digits": 2
+}
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH-LAP=
+{
+  "no_hours": true, 
+  "display_format": "/m/g/s/d/f",
+  "digits": 2,
+  "cumulated": true
+}
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [json_complete] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => json_complete
+                    [field_phi] => 
+                    [form_name] => json
+                    [form_menu_description] => 
+                    [field_order] => 13
+                    [field_units] => 
+                    [element_preceding_header] => Form Status
+                    [element_type] => select
+                    [element_label] => Complete?
+                    [element_enum] => 0, Incomplete \n 1, Unverified \n 2, Complete
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [lap_repeating] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => lap_repeating
+                    [field_phi] => 
+                    [form_name] => repeating
+                    [form_menu_description] => Repeating
+                    [field_order] => 14
+                    [field_units] => 
+                    [element_preceding_header] => Capture data in a repeating instrument
+                    [element_type] => text
+                    [element_label] => 
+11 Text Box (no validation) - storage in a repeating instrument
+
+ 
+@STOPWATCH-LAP=
+{
+  "cumulated": true,
+  "mapping": {
+      "id": "stopwatch_id",
+      "elapsed": "store_elapsed", 
+      "cumulated": "store_cumulated", 
+      "start": "store_start", 
+      "stop": "store_stop", 
+      "num_stops": "store_num_stops"
+   },
+   "resume": true
+}
+
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => @STOPWATCH-LAP=
+{
+   "cumulated": true,
+   "mapping": { 
+      "id": "stopwatch_id",
+      "elapsed": "store_elapsed", 
+      "cumulated": "store_cumulated", 
+      "start": "store_start", 
+      "stop": "store_stop", 
+      "num_stops": "store_num_stops"
+   },
+   "resume": true
+}
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [repeating_complete] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => repeating_complete
+                    [field_phi] => 
+                    [form_name] => repeating
+                    [form_menu_description] => 
+                    [field_order] => 15
+                    [field_units] => 
+                    [element_preceding_header] => Form Status
+                    [element_type] => select
+                    [element_label] => Complete?
+                    [element_enum] => 0, Incomplete \n 1, Unverified \n 2, Complete
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [stopwatch_id] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => stopwatch_id
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => Repeating Store
+                    [field_order] => 16
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Stopwatch ID
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [store_elapsed] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => store_elapsed
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 17
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Elapsed
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => number_comma_decimal
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [store_cumulated] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => store_cumulated
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 18
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Cumulated
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => int
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [store_start] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => store_start
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 19
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Start
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => int
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [store_stop] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => store_stop
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 20
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Stop
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [store_num_stops] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => store_num_stops
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 21
+                    [field_units] => 
+                    [element_preceding_header] => 
+                    [element_type] => text
+                    [element_label] => Time stopped?
+                    [element_enum] => 
+                    [element_note] => 
+                    [element_validation_type] => int
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => soft_typed
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+            [repeating_store_complete] => Array
+                (
+                    [project_id] => 49
+                    [field_name] => repeating_store_complete
+                    [field_phi] => 
+                    [form_name] => repeating_store
+                    [form_menu_description] => 
+                    [field_order] => 22
+                    [field_units] => 
+                    [element_preceding_header] => Form Status
+                    [element_type] => select
+                    [element_label] => Complete?
+                    [element_enum] => 0, Incomplete \n 1, Unverified \n 2, Complete
+                    [element_note] => 
+                    [element_validation_type] => 
+                    [element_validation_min] => 
+                    [element_validation_max] => 
+                    [element_validation_checktype] => 
+                    [branching_logic] => 
+                    [field_req] => 0
+                    [edoc_id] => 
+                    [edoc_display_img] => 0
+                    [custom_alignment] => 
+                    [stop_actions] => 
+                    [question_num] => 
+                    [grid_name] => 
+                    [grid_rank] => 0
+                    [misc] => 
+                    [video_url] => 
+                    [video_display_inline] => 0
+                )
+
+        )
+
+    [metadata_temp] => 
+    [table_pk] => record_id
+    [table_pk_temp] => 
+    [table_pk_phi] => 
+    [table_pk_label] => Record ID
+    [forms] => Array
+        (
+            [basic] => Array
+                (
+                    [form_number] => 1
+                    [menu] => Basic
+                    [has_branching] => 0
+                    [fields] => Array
+                        (
+                            [record_id] => Record ID
+                            [sw_int] => 
+1 Text Box, Integer (elapsed time in ms)
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                            [sw_number] => 
+2 Text Box, Number (elapsed time in seconds)
+
+ 
+Action Tag:
+@STOPWATCH={ "digits": 2, "hide_target": false }
+
+ 
+ 
+Limited to 2 decimal digit
+ 
+Input field explicitly shown
+ 
+
+                            [sw_number_comma] => 
+3 Text Box, Number w/comma (elapsed time in seconds)
+
+ 
+Action Tag:
+@STOPWATCH={ "digits": 1, "resume": true}
+
+ 
+ 
+Limited to 1 decimal digit
+ 
+Timer can be resumed after a stop
+ 
+
+                            [sw_mm_ss] => 
+4 Text Box, Time (MM:SS) 
+Note: no hours or milliseconds, capped at 59:59
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                            [sw_text] => 
+5 Text Box, no validation, text box shown
+
+ 
+Action Tag:
+@STOPWATCH={ "hide_target": false }
+
+
+                            [sw_invalidtarget] => 
+6 Yes - No (this is an invalid target type)
+
+ 
+Action Tag:
+@STOPWATCH
+
+
+                            [basic_complete] => Complete?
+                        )
+
+                    [survey_id] => 42
+                )
+
+            [json] => Array
+                (
+                    [form_number] => 2
+                    [menu] => JSON
+                    [has_branching] => 0
+                    [fields] => Array
+                        (
+                            [json_cap1] => 
+7 Notes Box - Captures stored as JSON, can resume
+
+ 
+@STOPWATCH=
+{
+  "mode": "capture",
+  "resume": true,
+  "hide_target": false
+}
+
+                            [json_cap2] => 
+8 Notes Box - Captures stored as JSON, no resume
+
+ 
+@STOPWATCH-CAPTURE
+
+                            [json_lap1] => 
+9 Notes Box - Laps stored as JSON, no resume
+
+ 
+@STOPWATCH-LAP
+
+                            [json_cap3] => 
+10 Notes Box - Laps stored as JSON, no hours display, 2 digits, and showing cumlulated time
+
+ 
+@STOPWATCH-LAP=
+{
+  "cumulated": true,
+  "no_hours": true,
+  "display_format": "/m/g/s/d/f",
+  "digits": 2
+}
+
+                            [json_complete] => Complete?
+                        )
+
+                )
+
+            [repeating] => Array
+                (
+                    [form_number] => 3
+                    [menu] => Repeating
+                    [has_branching] => 0
+                    [fields] => Array
+                        (
+                            [lap_repeating] => 
+11 Text Box (no validation) - storage in a repeating instrument
+
+ 
+@STOPWATCH-LAP=
+{
+  "cumulated": true,
+  "mapping": {
+      "id": "stopwatch_id",
+      "elapsed": "store_elapsed", 
+      "cumulated": "store_cumulated", 
+      "start": "store_start", 
+      "stop": "store_stop", 
+      "num_stops": "store_num_stops"
+   },
+   "resume": true
+}
+
+                            [repeating_complete] => Complete?
+                        )
+
+                )
+
+            [repeating_store] => Array
+                (
+                    [form_number] => 4
+                    [menu] => Repeating Store
+                    [has_branching] => 0
+                    [fields] => Array
+                        (
+                            [stopwatch_id] => Stopwatch ID
+                            [store_elapsed] => Elapsed
+                            [store_cumulated] => Cumulated
+                            [store_start] => Start
+                            [store_stop] => Stop
+                            [store_num_stops] => Time stopped?
+                            [repeating_store_complete] => Complete?
+                        )
+
+                )
+
+        )
+
+    [forms_temp] => 
+    [events] => Array
+        (
+            [1] => Array
+                (
+                    [name] => Arm 1
+                    [id] => 50
+                    [events] => Array
+                        (
+                            [80] => Array
+                                (
+                                    [day_offset] => 1
+                                    [offset_min] => 0
+                                    [offset_max] => 0
+                                    [descrip] => Event 1
+                                )
+
+                            [82] => Array
+                                (
+                                    [day_offset] => 2
+                                    [offset_min] => 0
+                                    [offset_max] => 0
+                                    [descrip] => Event 2
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [eventsForms] => Array
+        (
+            [80] => Array
+                (
+                    [0] => basic
+                    [1] => json
+                    [2] => repeating
+                    [3] => repeating_store
+                )
+
+            [82] => Array
+                (
+                    [0] => repeating_store
+                )
+
+        )
+
+    [eventInfo] => Array
+        (
+            [80] => Array
+                (
+                    [arm_id] => 50
+                    [arm_num] => 1
+                    [arm_name] => Arm 1
+                    [day_offset] => 1
+                    [offset_min] => 0
+                    [offset_max] => 0
+                    [name] => Event 1
+                    [name_ext] => Event 1
+                    [custom_event_label] => 
+                )
+
+            [82] => Array
+                (
+                    [arm_id] => 50
+                    [arm_num] => 1
+                    [arm_name] => Arm 1
+                    [day_offset] => 2
+                    [offset_min] => 0
+                    [offset_max] => 0
+                    [name] => Event 2
+                    [name_ext] => Event 2
+                    [custom_event_label] => 
+                )
+
+        )
+
+    [uniqueEventNames] => Array
+        (
+            [80] => event_1_arm_1
+            [82] => event_2_arm_1
+        )
+
+    [uniqueGroupNames] => 
+    [surveys] => Array
+        (
+            [42] => Array
+                (
+                    [form_name] => basic
+                    [title] => Basic
+                    [instructions] => 
+Please complete the survey below.
+
+
+Thank you!
+
+
+                    [acknowledgement] => 
+Thank you for taking the survey.
+
+
+Have a nice day!
+
+
+                    [question_by_section] => 0
+                    [display_page_number] => 0
+                    [question_auto_numbering] => 1
+                    [survey_enabled] => 1
+                    [save_and_return] => 0
+                    [save_and_return_code_bypass] => 0
+                    [logo] => 
+                    [hide_title] => 0
+                    [view_results] => 0
+                    [min_responses_view_results] => 10
+                    [check_diversity_view_results] => 0
+                    [end_survey_redirect_url] => 
+                    [survey_expiration] => 
+                    [promis_skip_question] => 0
+                    [survey_auth_enabled_single] => 0
+                    [edit_completed_response] => 0
+                    [hide_back_button] => 0
+                    [show_required_field_text] => 1
+                    [confirmation_email_subject] => 
+                    [confirmation_email_content] => 
+                    [confirmation_email_from] => 
+                    [confirmation_email_from_display] => 
+                    [confirmation_email_attach_pdf] => 0
+                    [confirmation_email_attachment] => 
+                    [text_to_speech] => 0
+                    [text_to_speech_language] => en
+                    [end_survey_redirect_next_survey] => 0
+                    [theme] => 
+                    [text_size] => 1
+                    [font_family] => 16
+                    [theme_text_buttons] => 
+                    [theme_bg_page] => 
+                    [theme_text_title] => 
+                    [theme_bg_title] => 
+                    [theme_text_sectionheader] => 
+                    [theme_bg_sectionheader] => 
+                    [theme_text_question] => 
+                    [theme_bg_question] => 
+                    [enhanced_choices] => 0
+                    [repeat_survey_enabled] => 0
+                    [repeat_survey_btn_text] => 
+                    [repeat_survey_btn_location] => AFTER_SUBMIT
+                    [response_limit] => 
+                    [response_limit_include_partials] => 1
+                    [response_limit_custom_text] => Thank you for your interest; however, the survey is closed because the maximum number of responses has been reached.
+                    [survey_time_limit_days] => 
+                    [survey_time_limit_hours] => 
+                    [survey_time_limit_minutes] => 
+                    [email_participant_field] => 
+                    [end_of_survey_pdf_download] => 0
+                    [pdf_auto_archive] => 0
+                    [pdf_econsent_version] => 
+                    [pdf_econsent_type] => 
+                    [pdf_econsent_firstname_field] => 
+                    [pdf_econsent_firstname_event_id] => 
+                    [pdf_econsent_lastname_field] => 
+                    [pdf_econsent_lastname_event_id] => 
+                    [pdf_econsent_dob_field] => 
+                    [pdf_econsent_dob_event_id] => 
+                    [pdf_econsent_allow_edit] => 0
+                    [pdf_econsent_signature_field1] => 
+                    [pdf_econsent_signature_field2] => 
+                    [pdf_econsent_signature_field3] => 
+                    [pdf_econsent_signature_field4] => 
+                    [pdf_econsent_signature_field5] => 
+                )
+
+        )
+
+    [fieldsOutOfOrder] => 
+    [numFields] => 22
+    [numFieldsTemp] => 0
+    [numForms] => 4
+    [numFormsTemp] => 0
+    [numArms] => 1
+    [numEvents] => 2
+    [longitudinal] => 1
+    [multiple_arms] => 
+    [firstForm] => basic
+    [firstFormMenu] => Basic
+    [firstArmId] => 50
+    [firstArmName] => Arm 1
+    [firstArmNum] => 1
+    [firstEventId] => 80
+    [firstFormSurveyId] => 42
+    [firstEventName] => Event 1
+    [formsFromLibrary] => 
+    [groups] => 
+    [groupUsers] => 
+    [matrixGroupNames] => Array
+        (
+        )
+
+    [matrixGroupNamesTemp] => 
+    [matrixGroupHasRanking] => Array
+        (
+        )
+
+    [hasFileUploadFields] => 
+    [RepeatingFormsEvents] => 
+    [eventsWhereAllFormsAreRepeatingForms] => 
+    [hasEconsentSurveys] => 
+    [hasSurveyEmailInvitationFields] => 
+    [surveyEmailInvitationFields] => Array
+        (
+        )
+
+    [executedSqlFields] => Array
+        (
+        )
+
+    [twilio_enabled_surveys] => 
+    [twilio_enabled_alerts] => 
+    [lastFormName] => repeating_store
+    [table_pk_order] => 1
+)
+{"success":true}
