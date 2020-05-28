@@ -3,8 +3,6 @@
 namespace DE\RUB\ManyExternalModule;
 
 use ExternalModules\AbstractExternalModule;
-use \DE\RUB\Utility\InjectionHelper;
-use \DE\RUB\Utility\Project;
 
 class ManyExternalModule extends AbstractExternalModule
 {
@@ -85,7 +83,7 @@ class ManyExternalModule extends AbstractExternalModule
         $debug = $this->getProjectSetting("debug-mode") === true;
 
         // Inject CSS and JS.
-        if (!class_exists("\RUB\Utility\InjectionHelper")) include_once("classes/InjectionHelper.php");
+        if (!class_exists("\DE\RUB\ManyExternalModule\InjectionHelper")) include_once("classes/InjectionHelper.php");
         $ih = InjectionHelper::init($this);
         $ih->js("js/many-em.js");
         $ih->css("css/many-em.css");
@@ -134,7 +132,7 @@ class ManyExternalModule extends AbstractExternalModule
                 // of ids like "repeat_instrument_table-80-repeating_store"
                 // i.e. "repeat_instrument_table-" + event_id + "-" + form name
                 // Then, JS side can use this to add UI elements
-                if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
+                if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
                 /** @var \DE\RUB\Utility\Project */
                 $project = Project::load($this->framework, $project_id);
                 $repeating = $project->getRepeatingFormsEvents();
@@ -202,7 +200,7 @@ class ManyExternalModule extends AbstractExternalModule
         //     ]
         //   ]
         // ]
-        if (!class_exists("\DE\RUB\Utility\Project")) include_once("classes/Project.php");
+        if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
         $project = Project::load($this->framework, $pid);
         $record = $project->getRecord($record_id);

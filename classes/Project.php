@@ -1,4 +1,4 @@
-<?php namespace DE\RUB\Utility;
+<?php namespace DE\RUB\ManyExternalModule;
 
 class Project
 {
@@ -29,7 +29,7 @@ class Project
      * @return Record 
      */
     function getRecord($record_id) {
-        if (!class_exists("\DE\RUB\Utility\Record")) include_once ("Record.php");
+        if (!class_exists("\DE\RUB\ManyExternalModule\Record")) include_once ("Record.php");
         return new Record($this->framework, $this, $record_id);
     }
 
@@ -436,6 +436,9 @@ class Project
         $ps = array(
             "pid" => $pid,
             "longitudinal" => $proj->longitudinal,
+            "multiple_arms" => $proj->multiple_arms,
+            // Events are ordered by day_offset in redcap_events_metadata
+            "first_event_id" => array_key_first($proj->events[1]["events"]), 
             "record_id" => $this->framework->getRecordIdField($pid),
             "forms" => array(),
             "events" => array(),
@@ -445,14 +448,20 @@ class Project
 
         // Gather data - arms, events, forms.
         // Some of this might be extractable from $proj, but this is just easier.
-        $result = $this->framework->query('
-            select a.arm_id, m.event_id, f.form_name
-            from redcap_events_arms a
-            join redcap_events_metadata m
-            on a.arm_id = m.arm_id and a.project_id = ?
-            join redcap_events_forms f
-            on f.event_id = m.event_id
-        ', $pid);
+        $params = array($pid);
+        $sql = "SELECT a.arm_id, m.event_id, f.form_name
+                FROM redcap_events_arms a
+                JOIN redcap_events_metadata m
+                ON a.arm_id = m.arm_id AND a.project_id = ?
+                JOIN redcap_events_forms f
+                ON f.event_id = m.event_id";
+        if (!$ps["longitudinal"]) {
+            // Limit to the "first" event (i.e. the one in Project) - there may be more if the 
+            // project has ever been longitudinal.
+            $sql .= " AND m.event_id = ?";
+            array_push($params, $ps["first_event_id"]);
+        }
+        $result = $this->framework->query($sql, $params);
         while ($row = $result->fetch_assoc()) {
             $ps["arms"][$row["arm_id"]]["id"] = $row["arm_id"];
             $ps["arms"][$row["arm_id"]]["events"][$row["event_id"]] = array(
@@ -483,6 +492,8 @@ class Project
             );
         }
         // Gather data - fields. Again, this could be got from $proj, but this is more straightforward to process.
+        // TODO: Do indeed get this from Project. This is more complicated than it seems.
+        
         $result = $this->framework->query('
             select field_name, form_name
             from redcap_metadata
