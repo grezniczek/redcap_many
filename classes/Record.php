@@ -118,6 +118,13 @@ class Record
         $event_id = $this->project->getEventId($event);
 
         global $user_rights;
+        // 
+        if (!$user_rights["record_delete"]) {
+            throw new \Exception("Insufficient rights for deletion of records or instances.");
+        }
+
+        // Perform deletion - there is a LOT to consider.
+
 
         // Code from DataEntry/index.php
             // DELETE ALL DATA ON SINGLE FORM ONLY
@@ -266,7 +273,7 @@ class Record
         if ($mode == self::REPEAT_EVENT) {
             // Repeating event.
             $sql .= "`field_name` = ? AND (";
-            array_push($parameters, $this->project->recordIdField());
+            array_push($parameters, $this->project->getRecordIdField());
             if (in_array(1, $instances)) {
                 $sql .= "`instance` IS NULL";
                 if (count($instances) > 1) {
@@ -314,7 +321,7 @@ class Record
         else {
             // Plain. It's enough that record exists.
             $sql .= "`field_name` = ? AND `instance` is null";
-            array_push($parameters, $this->project->recordIdField());
+            array_push($parameters, $this->project->getRecordIdField());
         }
         $result = $this->framework->query($sql, $parameters);
         $row = $result->fetch_assoc();
