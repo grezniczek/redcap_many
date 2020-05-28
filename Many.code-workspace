@@ -6,6 +6,10 @@
 		{
 			"path": "..\\..\\external_modules",
 			"name": "EM Framework"
+		},
+		{
+			"path": "..\\..\\redcap_v9.10.0\\Classes",
+			"name": "REDCap Classes"
 		}
 	],
 	"settings": {
