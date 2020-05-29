@@ -2,7 +2,8 @@
 
 use Exception;
 use \REDCap;
-use \Logging;
+use \Logging as REDCap_Logging;
+use \UserRights as REDCap_UserRights;
 
 class Record
 {
@@ -84,6 +85,12 @@ class Record
                 )
             )
         );
+
+        // TODO: 
+        // Permission issues? How to react? saveData does obey them, right?
+        // Probably need to call Record::saveData???
+        // Or enforce based on User Rights?
+
         REDCap::saveData(
             $this->project->getProjectId(), // project_id
             "array",                        // dataFormat
@@ -133,9 +140,12 @@ class Record
      * @param string $form The unique form name (it must exist and be a repeating form)
      * @param array<int>|int $instances A list of instances or a single instance number
      * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
-     * @throws Exception An exception is thrown in case of project data structure violations
+     * @throws Exception An exception is thrown in case of project data structure or privileges violations
      */
     public function lockFormInstances($form, $instances, $event = null) {
+        // Check permission
+        $this->project->requirePermission("lock_record");
+
         // Input validation
         $event_id = $this->requireEventId($event);
         if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
@@ -172,7 +182,7 @@ class Record
             ]);
             if ($result === true) {
                 // Update log
-                Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, $instance, false);
+                REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, $instance, false);
             }
         }
     }
@@ -186,6 +196,9 @@ class Record
      * @throws Exception An exception is thrown in case of project data structure violations
      */
     public function unlockFormInstances($form, $instances, $event = null) {
+        // Check permission
+        $this->project->requirePermission("lock_record");
+
         // Input validation
         $event_id = $this->requireEventId($event);
         if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
@@ -223,7 +236,7 @@ class Record
             ]);
             if ($result === true) {
                 // Update log
-                Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, $instance, false);
+                REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, $instance, false);
                 // Is the form e-signed? If so, negate the e-signature
                 if ($this->isFormInstanceESigned($form, $instance, $event_id)) {
                     // It is probably not necessary to check first, but instead simply negate
@@ -271,7 +284,7 @@ class Record
             ]);
             if ($result === true) {
                 // Update log
-                Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, $log_entry, "Negate e-signature", "", "", $project_id, true, $event_id, $instance, false);
+                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, $log_entry, "Negate e-signature", "", "", $project_id, true, $event_id, $instance, false);
             }
         }
     }
@@ -408,30 +421,35 @@ class Record
     }
 
     /**
-     * Deletes form instances.
-     * 
-     * @param string $form The unique form name (it must exist and be a repeating form)
-     * @param array|int|null $instances The instances, a single instance, or null (all instances)
+     * Deletes all instances of data on a single form.
+     * If anything other than NULL is passed for instances, the form must be repeating on the 
+     * given event. If NULL is passed for instancens, the form must not be repeating.     * 
+     * @param string $form The unique form name (this must be a repeating form unless null is passed for instances)
+     * @param array<int>|int|null $instances The instances, a single instance, or null
      * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
      * @throws Exception An exception is thrown in case of project data structure violations
      */
-    public function deleteFormInstances($form, $instances, $event) {
-        // Check event.
+    public function deleteFormInstances($form, $instances, $event = null) {
+        // Check permission
+        $this->project->requirePermission("record_delete");
+        // Input validation
         $event_id = $this->requireEventId($event);
-        // Check form.
-        if (!$this->project->hasForm($form) && !$this->project->isFormRepeating($form, $event)) {
-            throw new \Exception("Form '{$form}' does not exist or is not repeating in event '{$event}'.");
+        if (!$this->project->isFormOnEvent($form, $event_id)) {
+            throw new Exception("Form '{$form}' does not exist on event {$event_id}.");
+        }
+        // Repeating?
+        $form_repeating = $this->project->isFormRepeating($form, $event_id);
+        if ($form_repeating && $instances === null) {
+            throw new Exception("Must specify instances for repeating form '{$form}' on event {$event_id}.");
+        }
+        if (!$form_repeating && $instances !== null) {
+            throw new Exception("Form {'$form'} must be repeating on event {$event_id} when specfying a value other than NULL as the instances parameter.");
         }
         // Check instances
         $instances = $this->requireInstances($instances);
-
-        global $user_rights;
-        // 
-        if (!$user_rights["record_delete"]) {
-            throw new \Exception("Insufficient rights for deletion of records or instances.");
-        }
-
+        
         // Perform deletion - there is a LOT to consider.
+        $project_id = $this->project->getProjectId();
 
 
         // Code from DataEntry/index.php

@@ -134,7 +134,7 @@ class ManyExternalModule extends AbstractExternalModule
                 // Then, JS side can use this to add UI elements
                 if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
                 /** @var \DE\RUB\Utility\Project */
-                $project = Project::load($this->framework, $project_id);
+                $project = Project::get($this->framework, $project_id);
                 $repeating = $project->getRepeatingFormsEvents();
                 $dto_rhp["rit"] = array();
                 foreach ($repeating["forms"] as $event_id => $forms) {
@@ -202,7 +202,7 @@ class ManyExternalModule extends AbstractExternalModule
         // ]
         if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
-        $project = Project::load($this->framework, $pid);
+        $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
         foreach ($selected as $event_id => $forms) {
             foreach ($forms as $form => $instances) {
@@ -230,7 +230,7 @@ class ManyExternalModule extends AbstractExternalModule
         // ]
         if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
-        $project = Project::load($this->framework, $pid);
+        $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
         foreach ($selected as $event_id => $forms) {
             foreach ($forms as $form => $instances) {

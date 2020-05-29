@@ -1,6 +1,9 @@
 <?php namespace DE\RUB\ManyExternalModule;
 
-use \Project as REDCapProject;
+use \Project as REDCap_Project;
+use \User as REDCap_User;
+use \UserRights as REDCap_UserRights;
+use \Exception;
 
 class Project
 {
@@ -8,14 +11,24 @@ class Project
     private $framework;
     /** @var int The project id */
     private $project_id;
-    /** @var REDCapProject */
+    /** @var REDCap_Project */
     private $proj;
 
-    public static function load($framework, $project_id) {
+    /**
+     * Instantiate a framework Project class.
+     * @param \ExternalModules\Framework $framework
+     * @param string|int|null $project_id (optional, current project assumed)
+     * @return Project
+     * @throws Exception Invalid project id, user, or when unable to determine
+     */
+    public static function get($framework, $project_id = null) {
         return new Project($framework, $project_id);
     }
 
-    function __construct($framework, $project_id){
+    private function __construct($framework, $project_id) {
+        if ($framework == null) {
+            throw new \Exception("Must provide a Framework instance.");
+        }
         $this->framework = $framework;
         $this->project_id = $framework->requireInteger($project_id);
         // Get REDCap's Project instance.
@@ -23,10 +36,11 @@ class Project
             $this->proj = $GLOBALS["Proj"];
         }
         else {
-            $this->proj = new REDCapProject($project_id);
+            $this->proj = new REDCap_Project($project_id);
         }
         $this->proj->getUniqueEventNames();
     }
+
 
 
     #region -- Project Properties ----------------------------------------------------
@@ -290,7 +304,122 @@ class Project
     #endregion
 
 
+    #region -- Permissions (User Rights) ---------------------------------------------
 
+    // Certain actions will require permissions, e.g. to delete form instances or 
+    // records, or to lock/unlock forms and/or records, etc.
+    
+    /**
+     * Grants the permissions of the specified user.
+     * @param string $user_id A user id
+     */
+    public function grantUserPermissions($user_id = null) {
+        // First, revoke all
+        $this->revokeAllPermissions();
+        // Then, get the user
+        $user_id = empty($user_id) ? USERID : $user_id;
+        // And add their privileges (grant all for super users)
+        if (REDCap_User::isSuperUser($user_id)) {
+            $this->grantAllPermissions();
+        }
+        else {
+            $user_rights = REDCap_UserRights::getPrivileges($this->project_id, $user_id);
+            foreach (array_keys($this->permissions) as $permission) {
+                $this->permissions[$permission] = $user_rights[$permission] != 0;
+            }
+        }
+        $this->permissions_user = empty($user_id) ? null : $user_id;
+    }
+
+    /**
+     * Checks if a permission is granted.
+     * @param string $permission
+     * @return boolean
+     */
+    public function hasPermission($permission) {
+        return $this->permissions[$permission] === true;
+    }
+
+    /**
+     * Ensures that the specified permission is granted.
+     * @param string $permission
+     * @throws Exception
+     */
+    public function requirePermission($permission) {
+        if (!$this->hasPermission($permission)) {
+            if (array_key_exists($permission, $this->permissions)) {
+                throw new Exception("Permission '{$permission}' not granted.");
+            }
+            else {
+                throw new Exception("Invalid permission '{$permission}'.");
+            }
+        }
+    }
+
+    /**
+     * Revokes all permissions.
+     */
+    public function revokeAllPermissions() {
+        foreach ($this->permissions as $_ => &$granted) {
+            $granted = false;
+        }
+        $this->permissions_user = null;
+    }
+
+    /**
+     * Revoke a permission.
+     * @param string $permission
+     */
+    public function revokePermission($permission) {
+        $this->permissions[$permission] = false;
+        $this->permissions_user = null;
+    }
+
+    /**
+     * Grants all permissions.
+     */
+    public function grantAllPermissions() {
+        foreach ($this->permissions as $_ => &$granted) {
+            $granted = true;
+        }
+        $this->permissions_user = null;
+    }
+
+    /**
+     * Grants a permission.
+     * @param string $permission
+     */
+    public function grantPermissions($permission) {
+        $this->permissions[$permission] = true;
+        $this->permissions_user = null;
+    }
+
+    /**
+     * Gets the user id of the user used to set permissions.
+     * Returns NULL in case the permissions have been set otherwise or altered.
+     * @return string|null
+     */
+    public function getPermissionsUser() {
+        return $this->permissions_user;
+    }
+
+    /**
+     * @var array<string,boolean> Permissions
+     */
+    private $permissions = array(
+        "design" => false,
+        "record_delete" => false,
+        "lock_record" => false,
+        "lock_record_multiform" => false,
+        "data_access_groups" => false,
+    );
+
+    /**
+     *  @var string The user id last used to set permissions. This will be invalidated
+     *  whenever permissions are set with any other method. */
+    private $permissions_user = null;
+
+    #endregion
 
 
 
