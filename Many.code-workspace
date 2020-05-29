@@ -8,8 +8,8 @@
 			"name": "EM Framework"
 		},
 		{
-			"path": "..\\..\\redcap_v9.10.0\\Classes",
-			"name": "REDCap Classes"
+			"path": "..\\..\\redcap_v9.10.0",
+			"name": "REDCap"
 		}
 	],
 	"settings": {

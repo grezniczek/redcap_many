@@ -1,6 +1,8 @@
 <?php namespace DE\RUB\ManyExternalModule;
 
+use Exception;
 use \REDCap;
+use \Logging;
 
 class Record
 {
@@ -93,29 +95,335 @@ class Record
     }
 
     /**
+     * Gets a list of locked instances of a form.
+     * 
+     * @param string $form The unique form name (it must exist and be a repeating form)
+     * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @return array<int>
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function getLockedFormInstances($form, $event = null) {
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        // Query database
+        $sql = "SELECT `instance` FROM redcap_locking_data
+                WHERE `project_id` = ? AND
+                      `record` = ? AND
+                      `event_id` = ? AND
+                      `form_name` = ?";
+        $result = $this->framework->query($sql, array(
+            $this->project->getProjectId(),
+            $this->record_id,
+            $event_id,
+            $form
+        ));
+        $locked_instances = array();
+        while ($row = $result->fetch_assoc()) {
+            array_push($locked_instances, $row["instance"] * 1);
+        }
+        return $locked_instances;
+    }
+
+    /**
+     * Locks form instances.
+     * 
+     * @param string $form The unique form name (it must exist and be a repeating form)
+     * @param array<int>|int $instances A list of instances or a single instance number
+     * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function lockFormInstances($form, $instances, $event = null) {
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        $instances = $this->requireInstances($instances);
+        if (!count($instances)) return; // Nothing to do
+        // Get a list of already locked instances
+        $locked_instances = $this->getLockedFormInstances($form, $event_id);
+        // Determine those to lock
+        $instances_to_lock = array_diff($instances, $locked_instances);
+        if (!count($instances_to_lock)) return; // Nothing to do
+
+        // Prepare data and log entry template
+        $project_id = $this->project->getProjectId();
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
+        if ($this->project->isLongitudinal()) {
+            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        }
+
+        // Lock instances
+        foreach($instances_to_lock as $instance) {
+            $sql = "INSERT INTO redcap_locking_data 
+                    (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $result = $this->framework->query($sql, [
+                $project_id,
+                $this->record_id,
+                $event_id,
+                $form,
+                USERID,
+                NOW,
+                $instance
+            ]);
+            if ($result === true) {
+                // Update log
+                Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, $instance, false);
+            }
+        }
+    }
+
+    /**
+     * Unlocks form instances.
+     * 
+     * @param string $form The unique form name (it must exist and be a repeating form)
+     * @param array|int $instances A list of instance numbers or a single instance number
+     * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function unlockFormInstances($form, $instances, $event = null) {
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        $instances = $this->requireInstances($instances);
+        if (!count($instances)) return; // Nothing to do
+        // Get a list of already locked instances
+        $locked_instances = $this->getLockedFormInstances($form, $event_id);
+        // Determine those to lock
+        $instances_to_unlock = array_intersect($instances, $locked_instances);
+        if (!count($instances_to_unlock)) return; // Nothing to do
+
+        // Prepare data and log entry template
+        $project_id = $this->project->getProjectId();
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
+        if ($this->project->isLongitudinal()) {
+            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        }
+
+        // Unlock instances
+        foreach ($instances_to_unlock as $instance) {
+            $sql = "DELETE FROM redcap_locking_data 
+                    WHERE `project_id` = ? AND 
+                          `record` = ? AND 
+                          `event_id` = ? AND 
+                          `form_name` = ? AND 
+                          `instance` = ?";
+            $result = $this->framework->query($sql, [
+                $project_id,
+                $this->record_id,
+                $event_id,
+                $form,
+                $instance
+            ]);
+            if ($result === true) {
+                // Update log
+                Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, $instance, false);
+                // Is the form e-signed? If so, negate the e-signature
+                if ($this->isFormInstanceESigned($form, $instance, $event_id)) {
+                    // It is probably not necessary to check first, but instead simply negate
+                    $this->negateFormInstanceESignature($form, $instance, $event_id);
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Negates an e-signature on a form instance.
+     * 
+     * @param string $form The unique form name (it must exist and be a repeating form)
+     * @param array|int $instances A list of instance numbers or a single instance number
+     * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function negateFormInstanceESignature($form, $instances, $event = null) {
+        // Validate input
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        $instances = $this->requireInstances($instances);
+        $project_id = $this->project->getProjectId();
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
+        if ($this->project->isLongitudinal()) {
+            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        }
+        foreach ($instances as $instance) {
+            // No need to check if table row exists
+            $sql = "DELETE FROM redcap_esignatures 
+                    WHERE `project_id` = ? AND 
+                        `record` = ? AND 
+                        `event_id` = ? AND 
+                        `form_name` = ? AND 
+                        `instance` = ?";
+            $result = $this->framework->query($sql, [
+                $project_id,
+                $this->record_id,
+                $event_id,
+                $form,
+                $instance
+            ]);
+            if ($result === true) {
+                // Update log
+                Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, $log_entry, "Negate e-signature", "", "", $project_id, true, $event_id, $instance, false);
+            }
+        }
+    }
+
+
+    /**
+     * Checks whether the given form instance/s is/are e-signed.
+     * When instances are supplied as an array, an array with the subset of signed instances is returned. 
+     * @param string $form The unique form name
+     * @param array<int>|int $instances
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projets)
+     * @return bool|array<int>
+     */
+    public function isFormInstanceESigned($form, $instances, $event = null)
+    {
+        // Validate input
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        $return_as_array = is_array($instances);
+        $instances = $this->requireInstances($instances);
+        $count = count($instances);
+        if ($count == 0) return false; // Nothing to do
+        
+        // Different strategy depending on number of instances requested
+        if ($count == 1) {
+            $sql = "SELECT 1 FROM redcap_esignatures 
+                    WHERE `project_id` = ? AND 
+                          `record` = ? AND 
+                          `event_id` = ? AND 
+                          `form_name` = ? AND 
+                          `instance` = ? 
+                    LIMIT 1";
+            $result = $this->framework->query($sql, [
+                $this->project->getProjectId(),
+                $this->record_id,
+                $event_id,
+                $form,
+                $instances[0]
+            ]);
+            if ($result->num_rows == 1) {
+                return $return_as_array ? $instances : true;
+            }
+            else {
+                return $return_as_array ? array() : false;
+            }
+        }
+        else {
+            // Get all e-signed and compare lists
+            $esigned_instances = $this->getESignedFormInstances($form, $event_id);
+            return array_intersect($instances, $esigned_instances);
+        }
+    }
+
+    /**
+     * Gets a list of form instances that are e-signed.
+     * 
+     * @param string $form The unique form name
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projets)
+     * @return array<int>
+     */
+    public function getESignedFormInstances($form, $event = null) {
+        // Validate input
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        }
+        // Query database
+        $sql = "SELECT `instance` FROM redcap_esignatures 
+                WHERE `project_id` = ? AND 
+                      `record` = ? AND 
+                      `event_id` = ? AND 
+                      `form_name` = ?";
+        $result = $this->framework->query($sql, [
+            $this->project->getProjectId(),
+            $this->record_id,
+            $event_id,
+            $form
+        ]);
+        $esigned_instances = array();
+        while ($row = $result->fetch_assoc()) {
+            array_push($esigned_instances, $row["instance"] * 1);
+        }
+        return $esigned_instances;
+    }
+
+
+    /**
+     * Requires a valid event.
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @return int
+     * @throws Exception in case of invalid event
+     */
+    private function requireEventId($event) {
+        $event_id = $this->project->getEventId($event);
+        if ($event_id === null) {
+            throw new \Exception("Invalid '{$event}' for project '{$this->project->getProjectId()}'.");
+        }
+        return $event_id;
+    }
+
+    /**
+     * Requires a from to be on the given event.
+     * @param string $form The unique instrument name
+     * @param int $event_id The (numerical) event id
+     * @return string The unique instrument name
+     */
+    private function requireFormEvent($form, $event_id) {
+        if (!$this->project->isFormOnEvent($form, $event_id)) {
+            throw new Exception("Form '{$form}' is not on event '{$event_id}'.");
+        }
+        return $form;
+    }
+
+    /**
+     * Validates the 'instances' parameter. It can be an (empty) array of ints or null.
+     * @param array|int|null $instances
+     * @return array The instances
+     */
+    private function requireInstances($instances) {
+        if (is_int($instances)) {
+            $instances = array($instances);
+        }
+        else if ($instances === null) {
+            $instances = array();
+        }
+        foreach ($instances as $instance) {
+            if (!is_integer($instance) || $instances < 1) {
+                throw new \Exception("Invalid instance '{$instance}'. Must be an integer > 0.");
+            }
+        }
+        return $instances;
+    }
+
+    /**
      * Deletes form instances.
      * 
-     * @param string $form The form name (it must exist and be a repeating form).
-     * @param string $event The name or (numerical) id of the event.
-     * @param array $instances An array of the instance numbers to delete.
-     * @throws Exception An exception is thrown in case of project data structure violations.
+     * @param string $form The unique form name (it must exist and be a repeating form)
+     * @param array|int|null $instances The instances, a single instance, or null (all instances)
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @throws Exception An exception is thrown in case of project data structure violations
      */
-    public function deleteFormInstances($form, $event, $instances) {
+    public function deleteFormInstances($form, $instances, $event) {
         // Check event.
-        if (!$this->project->hasEvent($event)) {
-            throw new \Exception("Event '{$event}' does not exist in project '{$this->project->getProjectId()}'.");
-        }
+        $event_id = $this->requireEventId($event);
         // Check form.
         if (!$this->project->hasForm($form) && !$this->project->isFormRepeating($form, $event)) {
             throw new \Exception("Form '{$form}' does not exist or is not repeating in event '{$event}'.");
         }
-        // Check instance
-        foreach ($instances as $instance) {
-            if (!is_integer($instance)|| $instances < 1) {
-                throw new \Exception("Invalid instance '{$instance}'. Must be an integer > 0.");
-            }
-        }
-        $event_id = $this->project->getEventId($event);
+        // Check instances
+        $instances = $this->requireInstances($instances);
 
         global $user_rights;
         // 

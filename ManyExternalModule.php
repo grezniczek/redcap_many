@@ -206,13 +206,43 @@ class ManyExternalModule extends AbstractExternalModule
         $record = $project->getRecord($record_id);
         foreach ($selected as $event_id => $forms) {
             foreach ($forms as $form => $instances) {
-                $record->deleteFormInstances($form, $event_id, $instances);
+                $record->deleteFormInstances($form, $instances, $event_id);
             }
         }
     }
 
 
-
+    /**
+     * Sets the lock state for the currently selected repeating form instances of the given record.
+     * @param string $record_id
+     * @param bool $locked
+     */
+    function setInstancesLockState($record_id, $locked) {
+        $pid = $this->getProjectId();
+        $selected = $this->loadSelectedInstances($pid, $record_id);
+        // [
+        //   event_id => [
+        //     form_name => [ 
+        //       instance_number,
+        //       ...
+        //     ]
+        //   ]
+        // ]
+        if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
+        /** @var \DE\RUB\Utility\Project */
+        $project = Project::load($this->framework, $pid);
+        $record = $project->getRecord($record_id);
+        foreach ($selected as $event_id => $forms) {
+            foreach ($forms as $form => $instances) {
+                if ($locked) {
+                    $record->lockFormInstances($form, $instances, $event_id);
+                }
+                else {
+                    $record->unlockFormInstances($form, $instances, $event_id);
+                }
+            }
+        }
+    }
 
 
 

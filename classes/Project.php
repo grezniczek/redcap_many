@@ -93,16 +93,30 @@ class Project
 
     /**
      * Checks whether an event exists in the project.
-     * @param mixed $event The unique name or numerical id of the event
+     * @param mixed $event The unique event name or the (numerical) event id
      * @return boolean
      */
     public function hasEvent($event) {
-        if (is_int($event * 1)) {
+        if (empty($event)) {
+            return false;
+        }
+        else if (is_int($event * 1)) {
             return array_key_exists($event * 1, $this->proj->eventInfo);
         }
         else {
             return in_array($event, array_values($this->proj->uniqueEventNames), true);
         }
+    }
+
+    /**
+     * Gets the event's display name.
+     * Returns null if the event does not exist
+     * @param string|int $event The unique form name
+     * @return string|null
+     */
+    public function getEventDisplayName($event) {
+        $event_id = $this->getEventId($event);
+        return $event_id === null ? null : $this->proj->eventInfo[$event_id]["name"];
     }
 
     /**
@@ -149,7 +163,16 @@ class Project
      * @return boolean
      */
     public function hasForm($form) {
-        return array_key_exists($form, $this->proj->form);
+        return array_key_exists($form, $this->proj->forms);
+    }
+
+    /**
+     * Gets the forms's display name.
+     * @param string $form The unique form name
+     * @return string
+     */
+    public function getFormDisplayName($form) {
+        return $this->proj->forms[$form]["menu"];
     }
 
     /**

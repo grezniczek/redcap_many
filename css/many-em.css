@@ -70,3 +70,7 @@ table.dataTable thead th.many-em-checkbox-col {
 .many-em-toolbar-link:hover {
     color: red;
 }
+
+.many-em-btn-success {
+    background-color: green !important;
+}

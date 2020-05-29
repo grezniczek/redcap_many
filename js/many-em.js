@@ -363,19 +363,19 @@ function buildRepeatInstrumentToolbar() {
                 .append(' &ndash; ') // tt-fy
             )
             // Clear
-            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link"></button>')
+            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link" data-many-em-action="clear-instances"></button>')
                 .text('Clear') // tt-fy
                 .on('click', clearInstances)
             )
             .append(' | ')
             // Restore
-            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link"></button>')
+            .append($('<button class="btn btn-link btn-xs many-em-toolbar-link" data-many-em-action="restore-instances"></button>')
                 .text('Restore') // tt-fy
                 .on('click', restoreInstances)
             )
             // View
             .append($('<div class="btn-group btn-group-xs"></div>')
-                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button"></button>')
+                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button" data-many-em-action="view-instances"></button>')
                     .html('View') // tt-fy
                     .on('click', viewInstances)
                 )
@@ -384,7 +384,7 @@ function buildRepeatInstrumentToolbar() {
             )
             // Update
             .append($('<div class="btn-group btn-group-xs"></div>')
-                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button"></button>')
+                .append($('<button type="button" class="btn btn-secondary many-em-toolbar-button" data-many-em-action="update-instances"></button>')
                     .html('Update') // tt-fy
                     .on('click', updateInstances)
                 )
@@ -392,9 +392,20 @@ function buildRepeatInstrumentToolbar() {
                 .append('<div class="dropdown-menu many-em-dropdown-update"></div>')
             )
         )
+    if (DTO.userRights.lock_record) {
+        // Lock and Unlock
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary many-em-toolbar-button" data-many-em-action="lock-record-instances"></button>')
+            .text('Lock') // tt-fy
+            .on('click', lockUnlockInstances)
+        )
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary many-em-toolbar-button" data-many-em-action="unlock-record-instances"></button>')
+            .text('Unlock') // tt-fy
+            .on('click', lockUnlockInstances)
+        )
+    }
     if (DTO.userRights.record_delete) {
         // Delete
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger many-em-toolbar-button"></button>')
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger many-em-toolbar-button" data-many-em-action="delete-instances"></button>')
             .text('Delete') // tt-fy
             .on('click', showDeleteInstances)
         )
@@ -416,6 +427,67 @@ function buildRepeatInstrumentToolbar() {
             .on('click', updateInstances)
         )
     })
+}
+
+
+/**
+ * Replaces a buttons content with a spinner.
+ * @param {JQuery<Element>} $btn 
+ */
+function spinButton($btn) {
+    var $temp = $('<div style="display:none;" class="many-em-spinning"></div>')
+    $temp.html($btn.html())
+    $btn.width($btn.width()) // Preserve width
+    $btn.html('<div class="many-em-spinner"><i class="fas fa-spinner fa-pulse"></i></div>')
+    $btn.append($temp)
+}
+
+/**
+ * Restores a spinning button's content.
+ * @param {JQuery<Element>} $btn 
+ * @param {boolean|null} success 
+ */
+function unspinButton($btn, success) {
+    $btn.find('.many-em-spinner').remove()
+    $btn.html($btn.find('.many-em-spinning').html())
+    $btn.addClass('many-em-btn-success')
+    setTimeout(function() {
+        $btn.removeClass('many-em-btn-success')
+    }, 500);
+}
+
+/**
+ * Lock or unlock the selected instances.
+ * @param {JQueryEventObject} e 
+ */
+function lockUnlockInstances(e) {
+    var $btn = $(e.target)
+    var mode = $btn.attr('data-many-em-action')
+    if (mode == 'lock-record-instances' || mode == 'unlock-record-instances') {
+        log(DTO.name + ': Locking/Unlocking instances (' + mode + ').')
+        // Disable toolbar
+        $('.many-em-rit-toolbar button').prop('disabled', true)
+        spinButton($btn)
+        updateServerInstances(mode, '--', null, 
+            function() {
+                lockUnlockInstancesComplete($btn, null)
+            }, 
+            function(jqXHR) {
+                lockUnlockInstancesComplete($btn, jqXHR)
+            })
+    }
+}
+
+/**
+ * Unlock the selected instances.
+ * @param {JQuery<Element>} $btn
+ * @param {JQuery.jqXHR} jqXHR
+ */
+function lockUnlockInstancesComplete($btn, jqXHR) {
+    unspinButton($btn, jqXHR == null)
+    updateRepeatInstrumentToolbar()
+    // Reload page
+    if (jqXHR == null) setTimeout(function() { location.reload() }, 200)
 }
 
 /**

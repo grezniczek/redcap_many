@@ -42,6 +42,12 @@ class ManyEM_ClearSelectionAjax
                 case "delete-record-instances":
                     $module->deleteRecordInstances($update["record"]);
                     break;
+                case "lock-record-instances": 
+                    $module->setInstancesLockState($update["record"], true);
+                    break;
+                case "unlock-record-instances": 
+                    $module->setInstancesLockState($update["record"], false);
+                    break;
             }
         }
         catch (\Throwable $e) {
