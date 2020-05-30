@@ -1,15 +1,15 @@
 //
-// Many EM
+// Multiple EM
 //
 /**
  * @typedef ExternalModules
  * @type {{
- *  ManyEM_DTO?: ManyDTO
+ *  MultipleEM_DTO?: MultipleDTO
  * }}
  */
 
 /**
- * @typedef ManyDTO
+ * @typedef MultipleDTO
  * @type {{
  *  name: string
  *  link: RecordLinkDTO
@@ -119,12 +119,12 @@
 
 
 /**
- * @typedef ManyRecords
+ * @typedef MultipleRecords
  * @type {Object<string, boolean>}
  */
 
 /**
- * @typedef ManyInstances
+ * @typedef MultipleInstances
  * @type {Object<string, Object<number, boolean>>}
  */
 

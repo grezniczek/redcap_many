@@ -1,14 +1,14 @@
-<?php namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 //
-// Many EM - Plugin
+// Multiple EM - Plugin
 //
-class ManyEM_PluginPage
+class MultipleEM_PluginPage
 {
-    /** @var ManyExternalModule $module Many EM instance */
+    /** @var MultipleExternalModule $module Multiple EM instance */
     private $module;
     
     /**
-     * @param ManyExternalModule $module Many EM instance
+     * @param MultipleExternalModule $module Multiple EM instance
      */
     public function __construct($module) {
         $this->module = $module;
@@ -27,13 +27,13 @@ class ManyEM_PluginPage
 // REDCap Header
 //
 require_once APP_PATH_DOCROOT . "ProjectGeneral/header.php";
-$many = new ManyEM_PluginPage($module);
+$multiple = new MultipleEM_PluginPage($module);
 //
 // Plugin Page
 ?>
-<div class="many-em-pagecontainer">
-    <h3><i class="far fa-check-square many-em-logo"></i> Many</h3>
-    <?php $many->render(); ?>
+<div class="multiple-em-pagecontainer">
+    <h3><i class="far fa-check-square multiple-em-logo"></i> Multiple</h3>
+    <?php $multiple->render(); ?>
 </div>
 <?php 
 //

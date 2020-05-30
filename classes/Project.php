@@ -1,4 +1,4 @@
-<?php namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 
 use \Project as REDCap_Project;
 use \User as REDCap_User;
@@ -39,6 +39,7 @@ class Project
             $this->proj = new REDCap_Project($project_id);
         }
         $this->proj->getUniqueEventNames();
+        $this->grantUserPermissions(USERID);
     }
 
 
@@ -96,7 +97,7 @@ class Project
      * @return Record 
      */
     function getRecord($record_id) {
-        if (!class_exists("\DE\RUB\ManyExternalModule\Record")) include_once ("Record.php");
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Record")) include_once ("Record.php");
         return new Record($this->framework, $this, $record_id);
     }
 

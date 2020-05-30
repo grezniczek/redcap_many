@@ -1,4 +1,4 @@
-<?php namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 
 class InjectionHelper
 {

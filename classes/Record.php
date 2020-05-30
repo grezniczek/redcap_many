@@ -1,4 +1,4 @@
-<?php namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 
 use Exception;
 use \REDCap;
@@ -159,14 +159,10 @@ class Record
         $instances_to_lock = array_diff($instances, $locked_instances);
         if (!count($instances_to_lock)) return; // Nothing to do
 
-        // Prepare data and log entry template
-        $project_id = $this->project->getProjectId();
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
-        if ($this->project->isLongitudinal()) {
-            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
-        }
-
         // Lock instances
+        $project_id = $this->project->getProjectId();
+        $lock_success = array();
+        $lock_fail = array();
         foreach($instances_to_lock as $instance) {
             $sql = "INSERT INTO redcap_locking_data 
                     (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`)
@@ -180,10 +176,16 @@ class Record
                 NOW,
                 $instance
             ]);
-            if ($result === true) {
-                // Update log
-                REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, $instance, false);
-            }
+            if ($result === true) $lock_success[] = $instance; else $lock_fail[] = $instance;
+        }
+        // Update log (bulk)
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
+        if ($this->project->isLongitudinal()) {
+            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        }
+        if (count($lock_success)) {
+            $log_entry = str_replace("#INST#", join(", ", $lock_success), $log_entry);
+            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, null, true);
         }
     }
 
@@ -212,14 +214,10 @@ class Record
         $instances_to_unlock = array_intersect($instances, $locked_instances);
         if (!count($instances_to_unlock)) return; // Nothing to do
 
-        // Prepare data and log entry template
-        $project_id = $this->project->getProjectId();
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
-        if ($this->project->isLongitudinal()) {
-            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
-        }
-
         // Unlock instances
+        $project_id = $this->project->getProjectId();
+        $unlock_success = array();
+        $unlock_fail = array();
         foreach ($instances_to_unlock as $instance) {
             $sql = "DELETE FROM redcap_locking_data 
                     WHERE `project_id` = ? AND 
@@ -235,17 +233,24 @@ class Record
                 $instance
             ]);
             if ($result === true) {
-                // Update log
-                REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, $instance, false);
                 // Is the form e-signed? If so, negate the e-signature
                 if ($this->isFormInstanceESigned($form, $instance, $event_id)) {
                     // It is probably not necessary to check first, but instead simply negate
                     $this->negateFormInstanceESignature($form, $instance, $event_id);
                 }
             }
+            if ($result === true) $unlock_success[] = $instance; else $unlock_fail[] = $instance;
+        }
+        // Update log (bulk)
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
+        if ($this->project->isLongitudinal()) {
+            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        }
+        if (count($unlock_success)) {
+            $log_entry= str_replace("#INST#", join(", ", $unlock_success), $log_entry);
+            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, null, true);
         }
     }
-
 
     /**
      * Negates an e-signature on a form instance.

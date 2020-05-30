@@ -1,9 +1,9 @@
-<?php namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 
-class ManyEM_ClearSelectionAjax
+class MultipleEM_ClearSelectionAjax
 {
     /**
-     * @param ManyExternalModule $module
+     * @param MultipleExternalModule $module
      */
     public static function execute($module) {
 
@@ -65,4 +65,4 @@ class ManyEM_ClearSelectionAjax
         }
     }
 }
-ManyEM_ClearSelectionAjax::execute($module);
+MultipleEM_ClearSelectionAjax::execute($module);

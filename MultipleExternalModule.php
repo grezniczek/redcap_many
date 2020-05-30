@@ -1,14 +1,12 @@
-<?php
-
-namespace DE\RUB\ManyExternalModule;
+<?php namespace DE\RUB\MultipleExternalModule;
 
 use ExternalModules\AbstractExternalModule;
 
-class ManyExternalModule extends AbstractExternalModule
+class MultipleExternalModule extends AbstractExternalModule
 {
 
-    private const MANY_EM_SESSION_KEY_RECORDS = "many-em-selection-store-records";
-    private const MANY_EM_SESSION_KEY_INSTANCES = "many-em-selection-store-instances";
+    private const MULTIPLE_EM_SESSION_KEY_RECORDS = "multiple-em-selection-store-records";
+    private const MULTIPLE_EM_SESSION_KEY_INSTANCES = "multiple-em-selection-store-instances";
 
     function redcap_every_page_before_render($project_id) {
 
@@ -47,7 +45,7 @@ class ManyExternalModule extends AbstractExternalModule
                 $allowed = array("record_id", "yesnofield", "yesnoradio1", "record_info_complete", "locktime", "form_2_complete");
                 $Proj->forms["_fake"] = array(
                     "form_number" => 1,
-                    "menu" => "Edit Many",
+                    "menu" => "Edit Multiple",
                     "has_branching" => 0,
                     "fields" => array(),
                 );
@@ -62,11 +60,11 @@ class ManyExternalModule extends AbstractExternalModule
             // This can be achieved by setting the <form>'s action attribute to the plugin page
 
             // Hide Actions, Save & .. Button
-            // Change "Save & Exit Form" to "Save Many"
+            // Change "Save & Exit Form" to "Save Multiple"
             // Hide "Lock this instrument?" row
             // Hide floating save menu
             // Hide "Adding new ..."
-            // Set record id to Many logo
+            // Set record id to Multiple logo
             // Multiple _complete fields? Add respective form name to "Form Status"
 
             // Hide Record entry in left side menu!
@@ -83,15 +81,15 @@ class ManyExternalModule extends AbstractExternalModule
         $debug = $this->getProjectSetting("debug-mode") === true;
 
         // Inject CSS and JS.
-        if (!class_exists("\DE\RUB\ManyExternalModule\InjectionHelper")) include_once("classes/InjectionHelper.php");
+        if (!class_exists("\DE\RUB\MultipleExternalModule\InjectionHelper")) include_once("classes/InjectionHelper.php");
         $ih = InjectionHelper::init($this);
-        $ih->js("js/many-em.js");
-        $ih->css("css/many-em.css");
+        $ih->js("js/multiple-em.js");
+        $ih->css("css/multiple-em.css");
 
         $dto_selected = $this->loadSelectedRecords($project_id);
 
         // Link to plugin page in the Data Collection menu.
-        $href = $this->getUrl("many.php");
+        $href = $this->getUrl("multiple.php");
         $name = $this->getConfig()["name"];
         $updateUrl = $this->getUrl("ajax/update-selection.php");
         $dto_link = array(
@@ -132,7 +130,7 @@ class ManyExternalModule extends AbstractExternalModule
                 // of ids like "repeat_instrument_table-80-repeating_store"
                 // i.e. "repeat_instrument_table-" + event_id + "-" + form name
                 // Then, JS side can use this to add UI elements
-                if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
+                if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
                 /** @var \DE\RUB\Utility\Project */
                 $project = Project::get($this->framework, $project_id);
                 $repeating = $project->getRepeatingFormsEvents();
@@ -169,7 +167,7 @@ class ManyExternalModule extends AbstractExternalModule
         // Transfer data to the JavaScript implementation.
 ?>
         <script>
-            var DTO = window.ExternalModules.ManyEM_DTO;
+            var DTO = window.ExternalModules.MultipleEM_DTO;
             DTO.debug = <?= json_encode($debug) ?>;
             DTO.name = <?= json_encode($name) ?>;
             DTO.updateUrl = <?= json_encode($updateUrl) ?>;
@@ -200,7 +198,7 @@ class ManyExternalModule extends AbstractExternalModule
         //     ]
         //   ]
         // ]
-        if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
         $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
@@ -228,7 +226,7 @@ class ManyExternalModule extends AbstractExternalModule
         //     ]
         //   ]
         // ]
-        if (!class_exists("\DE\RUB\ManyExternalModule\Project")) include_once("classes/Project.php");
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
         $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
@@ -249,14 +247,14 @@ class ManyExternalModule extends AbstractExternalModule
 
     private function loadSelectedRecords($pid)
     {
-        return isset($_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid]) ?
-            $_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid] :
+        return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid]) ?
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid] :
             array();
     }
 
     private function saveSelectedRecords($pid, $selected)
     {
-        $_SESSION[self::MANY_EM_SESSION_KEY_RECORDS][$pid] = $selected;
+        $_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid] = $selected;
     }
 
     public function updateRecords($diff)
@@ -288,54 +286,54 @@ class ManyExternalModule extends AbstractExternalModule
     {
         $pid = $this->getProjectId();
         if ($record_id) {
-            unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
+            unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
         } else {
-            unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid]);
+            unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid]);
         }
     }
 
     private function loadSelectedInstances($pid, $record_id, $event_id = null, $form = null)
     {
         if ($form == null && $event_id == null) {
-            return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]) ?
-                $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id] :
+            return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]) ?
+                $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id] :
                 array();
         }
         else if ($form == null) {
-            return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]) ?
-            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] :
+            return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]) ?
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] :
             array();
         }
         else {
-        return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form]) ?
-            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] :
+        return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form]) ?
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] :
             array();
         }
     }
 
     private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances)
     {
-        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid]))
-            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid] = array();
-        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]))
-            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id] = array();
-        if (!isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]))
-            $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] = array();
-        $_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
+        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid]))
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid] = array();
+        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]))
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id] = array();
+        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]))
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] = array();
+        $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
     }
 
     private function isInstanceSelected($pid, $record_id, $event_id, $form, $instance) {
-        return isset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form][$instance]);
+        return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form][$instance]);
     }
 
     private function deleteSelectedInstancesForRecord($pid, $record_id)
     {
-        unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
+        unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
     }
 
     private function deleteSelectedInstancesForRecordEvent($pid, $record_id, $event_id)
     {
-        unset($_SESSION[self::MANY_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]);
+        unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]);
     }
 
     public function updateInstances($record_id, $event_id, $form, $diff)
@@ -373,11 +371,11 @@ class ManyExternalModule extends AbstractExternalModule
         /** @var \ExternalModules\Framework */
         $fw = $this->framework;
         ?>
-        <div class="modal fade many-em-delete-confirmation-modal" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="many-em-delete-confirmation-model-staticBackdropLabel" aria-hidden="true">
+        <div class="modal fade multiple-em-delete-confirmation-modal" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="multiple-em-delete-confirmation-model-staticBackdropLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="many-em-delete-confirmation-model-staticBackdropLabel">Title</h5>
+                        <h5 class="modal-title" id="multiple-em-delete-confirmation-model-staticBackdropLabel">Title</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="<?=$fw->tt("modal_close")?>">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -387,7 +385,7 @@ class ManyExternalModule extends AbstractExternalModule
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?=$fw->tt("modal_cancel")?></button>
-                        <button type="button" class="btn btn-danger many-em-confirmed"><?=$fw->tt("modal_delete")?></button>
+                        <button type="button" class="btn btn-danger multiple-em-confirmed"><?=$fw->tt("modal_delete")?></button>
                     </div>
                 </div>
             </div>
@@ -395,4 +393,4 @@ class ManyExternalModule extends AbstractExternalModule
         <?php
     }
 
-} // ManyExternalModule
+} // MultipleExternalModule

@@ -1,10 +1,10 @@
 /*
- *  Many EM 
+ *  Multiple EM 
  */
-.many-em-logo {
+.multiple-em-logo {
     color: green !important;
 }
-.many-em-menu-link-count {
+.multiple-em-menu-link-count {
     text-indent: 0;
     margin: 0 0.5em;
     font-size: 11px;
@@ -12,18 +12,18 @@
     padding-left: 0.5em;
     padding-right: 0.5em;
 }
-.many-em-menu-link-clear,
-.many-em-menu-link-restore,
-.many-em-menu-link-addremoverecord {
+.multiple-em-menu-link-clear,
+.multiple-em-menu-link-restore,
+.multiple-em-menu-link-addremoverecord {
     font-size: 10px !important;
     margin: 0 0.2em;
 }
 
 
-.many-em-select-toolbar {
+.multiple-em-select-toolbar {
     margin: -0.2em 0 0.5em 1em;
 }
-.many-em-checkbox-wrapper {
+.multiple-em-checkbox-wrapper {
     width: 30px;
     height: 20px;
     position: absolute;
@@ -32,11 +32,11 @@
     margin: auto;
     text-align: center;
 }
-table.dataTable thead th.many-em-checkbox-col {
+table.dataTable thead th.multiple-em-checkbox-col {
     padding: 0;
     margin: 0;
 }
-.many-em-checkbox-col {
+.multiple-em-checkbox-col {
     position: relative;
     width: 30px;
     padding: 0;
@@ -44,33 +44,33 @@ table.dataTable thead th.many-em-checkbox-col {
 
 
 /* Record Home Page */
-.many-em-rit {
+.multiple-em-rit {
     white-space: nowrap;
     font-weight: normal;
 }
-.many-em-rit-instance-count {
+.multiple-em-rit-instance-count {
     font-weight: normal;
     margin-left: 0.5em;
 }
-#repeating_forms_table_parent .many-em-checkbox-wrapper {
+#repeating_forms_table_parent .multiple-em-checkbox-wrapper {
     margin-left: -3px;
 }
-.many-em-rit-toolbar {
+.multiple-em-rit-toolbar {
     margin: 5px 0 0 5px;
 }
-.many-em-rit-toolbar .btn-toolbar-text {
+.multiple-em-rit-toolbar .btn-toolbar-text {
     font-size: 0.9em;
 }
-.many-em-toolbar-button {
+.multiple-em-toolbar-button {
     margin-left: 0.5em;
 }
-.many-em-toolbar-link {
+.multiple-em-toolbar-link {
     color: var(--dark);
 }
-.many-em-toolbar-link:hover {
+.multiple-em-toolbar-link:hover {
     color: red;
 }
 
-.many-em-btn-success {
+.multiple-em-btn-success {
     background-color: green !important;
 }

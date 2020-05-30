@@ -1,7 +1,7 @@
 {
-    "name": "Many",
-    "namespace": "DE\\RUB\\ManyExternalModule",
-    "description": "Adds multi-record editing capabilites to REDCap. <strong><a href=\"https://github.com/grezniczek/redcap_many\">See full documentation here</a></strong>.",
+    "name": "Multiple",
+    "namespace": "DE\\RUB\\MultipleExternalModule",
+    "description": "Adds multi-record/instance editing capabilites to REDCap. <strong><a href=\"https://github.com/grezniczek/redcap_many\">See full documentation here</a></strong>.",
     "permissions": [
         "redcap_every_page_before_render",
         "redcap_every_page_top"
@@ -23,12 +23,12 @@
             "type": "checkbox"
         },
         {
-            "name": "Activate Many on the <i>Record Status Dashboard</i> by default",
+            "name": "Activate Multiple on the <i>Record Status Dashboard</i> by default",
             "key": "rsd-active",
             "type": "checkbox"
         },
         {
-            "name": "Activate Many for Repeating Instruments on the <i>Record Home Page</i> by default",
+            "name": "Activate Multiple for Repeating Instruments on the <i>Record Home Page</i> by default",
             "key": "rhp-active",
             "type": "checkbox"
         }
