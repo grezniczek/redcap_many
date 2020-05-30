@@ -268,7 +268,7 @@ class Record
         }
         $instances = $this->requireInstances($instances);
         $project_id = $this->project->getProjectId();
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
+        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
         if ($this->project->isLongitudinal()) {
             $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
         }
@@ -289,7 +289,7 @@ class Record
             ]);
             if ($result === true) {
                 // Update log
-                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, $log_entry, "Negate e-signature", "", "", $project_id, true, $event_id, $instance, false);
+                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, str_replace("#INST#", $instance, $log_entry), "Negate e-signature", "", "", $project_id, true, $event_id, null, false);
             }
         }
     }
