@@ -48,6 +48,7 @@ var rhpState = {
 
 //#endregion
 
+
 //#region Logging --------------------------------------------------------------------------
 
 /**
@@ -63,11 +64,6 @@ function log() {
 }
 
 //#endregion
-
-
-function getBrandIconHTML() {
-    return '<i class="far fa-check-square multiple-em-logo"></i>'
-}
 
 
 //#region -- Data Collection Menu --------------------------------------------------------
@@ -130,6 +126,7 @@ function updateDataCollectionLink() {
 }
 
 //#endregion
+
 
 //#region -- Record Status Dashboard -----------------------------------------------------
 
@@ -226,13 +223,14 @@ function updateRecordStatusDashboardSelection() {
 
 //#endregion
 
+
 //#region -- Record Home Page ------------------------------------------------------------
 
 /**
  * Applies changes to a repeating instrument table to the selected instances
  * @param {string} rit repeat_instrument_table-event_id-form_name
  */
-function applyRHPinstances(rit) {
+function applyRHPInstances(rit) {
     var $rit = $('#' + rit)
     var count = 0
     // Update data
@@ -258,8 +256,11 @@ function applyRHPinstances(rit) {
     }
     // Update counters
     $rit.find('.multiple-em-rit-instance-count').text(count)
-    updateRepeatInstrumentToolbar()
+    updateRHPToolbars()
 }
+
+
+//#region ---- User Interface Building & Handling ----------------------------------------
 
 /**
  * Toggles display of the repeat instance table menu
@@ -355,7 +356,7 @@ function buildRepeatInstrumentToolbar() {
                 .text('Clear') // tt-fy
                 .on('click', clearInstances)
             )
-            .append(' | ')
+            .append('|')
             // Restore
             .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="restore-instances"></button>')
                 .text('Restore') // tt-fy
@@ -417,31 +418,234 @@ function buildRepeatInstrumentToolbar() {
     })
 }
 
-
 /**
- * Replaces a buttons content with a spinner.
- * @param {JQuery<Element>} $btn 
+ * Builds the instrument toolbar
  */
-function spinButton($btn) {
-    var $temp = $('<div style="display:none;" class="multiple-em-spinning"></div>')
-    $temp.html($btn.html())
-    $btn.width($btn.width()) // Preserve width
-    $btn.html('<div class="multiple-em-spinner"><i class="fas fa-spinner fa-pulse"></i></div>')
-    $btn.append($temp)
+function buildInstrumentToolbar() {
+    var $tb = $('<div class="multiple-em-egt multiple-em-egt-toolbar" style="display:none"></div>')
+        .before('#event_grid_table')
+        .append($('<div class="btn-toolbar" role="toolbar"></div>')
+            .append($('<div class="btn-toolbar-text"></div>')
+                .append(getBrandIconHTML())
+                .append(' ' + DTO.name + ' ' + '<i>Forms</i> ')
+                .append('<span class="multiple-em-forms-total-count badge badge-secondary font-weight-normal">0</span>')
+                .append(' &ndash; ') // tt-fy
+            )
+            // Clear
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="clear-forms"></button>')
+                .text('Clear') // tt-fy
+                .on('click', clearForms)
+            )
+            .append('|')
+            // Restore
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="restore-forms"></button>')
+                .text('Restore') // tt-fy
+                .on('click', restoreForms)
+            )
+        )
+    if (DTO.userRights.lock_record) {
+        // Lock and Unlock
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="lock-record-forms"></button>')
+            .text('Lock') // tt-fy
+            .on('click', lockUnlockForms)
+        )
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="unlock-record-forms"></button>')
+            .text('Unlock') // tt-fy
+            .on('click', lockUnlockForms)
+        )
+    }
+    if (DTO.userRights.record_delete) {
+        // Delete
+        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger multiple-em-toolbar-button" data-multiple-em-action="delete-forms"></button>')
+            .text('Delete') // tt-fy
+            .on('click', showDeleteForms)
+        )
+    }
+}
+
+function restoreForms() {
+
 }
 
 /**
- * Restores a spinning button's content.
- * @param {JQuery<Element>} $btn 
- * @param {boolean|null} success 
+ * Restores checkboxes to reflect the state in Instance Selection
  */
-function unspinButton($btn, success) {
-    $btn.find('.multiple-em-spinner').remove()
-    $btn.html($btn.find('.multiple-em-spinning').html())
-    $btn.addClass('multiple-em-btn-success')
-    setTimeout(function() {
-        $btn.removeClass('multiple-em-btn-success')
-    }, 500);
+function restoreInstances() {
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        var $rit = $('#' + rit)
+        $rit.find('input.multiple-em-toggle-all').prop('checked', false)
+        $rit.find('input[data-multiple-em-instance]').each(function() {
+            var $cb = $(this)
+            var instance = parseInt($cb.attr('data-multiple-em-instance'))
+            $cb.prop('checked', typeof multipleInstances[rit] != 'undefined' && multipleInstances[rit][instance] == true)
+        })
+    })
+}
+
+function clearForms() {
+
+}
+
+/**
+ * Removes all instances from the Instances Selection
+ */
+function clearInstances() {
+    updateServerInstances('remove-all-instances', '--', null, null, null)
+    multipleInstances = {}
+    restoreInstances()
+    updateRHPToolbars()
+}
+
+/**
+ * Determines the number of total selected instances and updates the counter in the
+ * repeat instrument toolbar
+ */
+function updateRHPToolbars() {
+    var count = 0
+    rhpState.record_selected = multipleRecords[rhpState.record] == true
+    if (rhpState) {
+        Object.keys(multipleInstances).forEach(function(rit) {
+            Object.keys(multipleInstances[rit]).forEach(function(instance) {
+                if (multipleInstances[rit][instance]) {
+                    count++
+                }
+            })
+        })
+    }
+    $('.multiple-em-instances-total-count').text(count)
+    $('.multiple-em-toolbar-button').prop('disabled', count == 0)
+    $('.multiple-em-dropdown-toggle-view').prop('disabled', count == 0 || !DTO.rhp.viewPresets.length)
+    $('.multiple-em-dropdown-toggle-update').prop('disabled', count == 0 || !DTO.rhp.updatePresets.length)
+    if (!rhpState.record_selected) {
+        $('.multiple-em-toggle-display').hide()
+        $('.multiple-em-rit').hide(100)
+        $('.multiple-em-egt').hide(100)
+        $('input[data-multiple-em-instance]').prop('checked', false)
+        $('input[data-multiple-em-fomm]').prop('checked', false)
+    }
+}
+
+/**
+ * Adds module UI to all repeating instrument tables
+ */
+function setupRecordHomePage() {
+    // Setup UI for each repeating instrument table
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        // Initialize Selected Instances store
+        multipleInstances[rit] = {}
+        DTO.rhp.rit[rit].forEach(function(instance) {
+            multipleInstances[rit][instance] = true
+        })
+        // Set initial state to hidden
+        rhpState.visible[rit] = false
+        // Build HTML
+        var $rit = buildRepeatInstrumentTableMenu(rit)
+        // Hook up events
+        $rit.find('a[data-multiple-em-action]').on('click', function() {
+            var command = this.getAttribute('data-multiple-em-action')
+            switch(command) {
+                case 'toggle': {
+                    toggleRepeatInstrumentTableMenu(rit)
+                    break
+                }
+                case 'apply': {
+                    applyRHPInstances(rit)
+                    break
+                }
+                case 'addAll': {
+                    $rit.find('input[data-multiple-em-instance]').prop('checked', true)
+                    applyRHPInstances(rit)
+                    break
+                }
+                case 'removeAll': {
+                    $rit.find('input[data-multiple-em-instance]').prop('checked', false)
+                    applyRHPInstances(rit)
+                    break
+                }
+            }
+        })
+        // Update count
+        $rit.find('.multiple-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
+        if (DTO.rhp.activate && rhpState.record_selected) toggleRepeatInstrumentTableMenu(rit)
+    })
+    // Build the toolbars
+    buildInstrumentToolbar()
+    buildRepeatInstrumentToolbar()
+    // Is the record in the selection?
+    rhpState.record_selected = multipleRecords[rhpState.record] == true
+    if (rhpState.record_selected) {
+        $('.multiple-em-rit').show()
+        $('.multiple-em-egt').show()
+        updateRHPToolbars()
+    }
+    // Hook up modal events
+    $('.multiple-em-delete-confirmation-modal button.multiple-em-confirmed').on('click', deletionConfirmed)
+    // Remove max width - TODO - this is not perfect
+    $('#repeating_forms_table_parent').children('div').css('max-width', '33%').css('flex', '0 0 33%')
+}
+
+//#endregion
+
+//#region ---- Add / Remove Record -------------------------------------------------------
+
+/**
+ * Adds or removes the current record to the Record Selection.
+ * @param {any} override 
+ */
+function addRemoveRecord(override) {
+    /** @type {UpdateDiff} */
+    var diff = {}
+    rhpState.$addRemoveLink.hide()
+    if (typeof override != 'boolean') {
+        rhpState.record_selected = !rhpState.record_selected
+    }
+    else {
+        rhpState.record_selected = override == true
+    }
+    multipleRecords[rhpState.record] = rhpState.record_selected
+    diff[rhpState.record] = rhpState.record_selected
+    if (rhpState.record_selected) {
+        $('.multiple-em-rit').show(100)
+        if (DTO.rhp.activate) {
+            $('.multiple-em-toggle-display').show()
+        }
+    }
+    else {
+        // Clear all instances
+        Object.keys(DTO.rhp.rit).forEach(function(rit) {
+            rhpState.visible[rit] = false
+            applyRHPInstances(rit)
+        })
+    }
+    updateServerSelection('update-records', diff)
+    updateRHPToolbars()
+}
+
+/**
+ * Determines whether the Record Home Page is shown for a new or existing 
+ * record and sets some state accordingly.
+ */
+function determineRecordState() {
+    var url = $('#record-home-link').attr('href')
+    if (url.includes('&auto=')) {
+        DTO.rhp.init = false
+        rhpState.record = null
+    }
+    else {
+        url.split('&').forEach(function(part) {
+            if (part.startsWith('id=')) rhpState.record = part.substr(3)
+        })
+        rhpState.record_selected = multipleRecords[rhpState.record] == true
+    }
+    log('Record = ' + rhpState.record + (rhpState.record_selected ? ' (selected)' : ''))
+}
+
+//#endregion
+
+//#region ---- Locking / Unlocking / E-Signature -----------------------------------------
+
+function lockUnlockForms(e) {
+    log('Lock/Unlock Forms - not implemented yet.')
 }
 
 /**
@@ -473,29 +677,17 @@ function lockUnlockInstances(e) {
  */
 function lockUnlockInstancesComplete($btn, jqXHR) {
     unspinButton($btn, jqXHR == null)
-    updateRepeatInstrumentToolbar()
+    updateRHPToolbars()
     // Reload page
     if (jqXHR == null) setTimeout(function() { location.reload() }, 200)
 }
 
-/**
- * Show the view instances dialog
- * @param {JQueryEventObject} e 
- */
-function viewInstances(e) {
-    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
-    
-    log('viewInstances with preset \'' + presetId + '\'')
-}
+//#endregion
 
-/**
- * Show the update instances dialog
- * @param {JQueryEventObject} e 
- */
-function updateInstances(e) {
-    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
-    
-    log('updateInstances with preset \'' + presetId + '\'')
+//#region ---- Delete --------------------------------------------------------------------
+
+function showDeleteForms() {
+    log('Delete Forms - not implemented yet.')
 }
 
 /**
@@ -541,169 +733,35 @@ function deleteInstancesFailed(jqXHR) {
 
 }
 
-/**
- * Restores checkboxes to reflect the state in Instance Selection
- */
-function restoreInstances() {
-    Object.keys(DTO.rhp.rit).forEach(function(rit) {
-        var $rit = $('#' + rit)
-        $rit.find('input.multiple-em-toggle-all').prop('checked', false)
-        $rit.find('input[data-multiple-em-instance]').each(function() {
-            var $cb = $(this)
-            var instance = parseInt($cb.attr('data-multiple-em-instance'))
-            $cb.prop('checked', typeof multipleInstances[rit] != 'undefined' && multipleInstances[rit][instance] == true)
-        })
-    })
-}
+//#endregion
+
+//#region ---- View / Update Instances ---------------------------------------------------
 
 /**
- * Removes all instances from the Instances Selection
+ * Show the view instances dialog
+ * @param {JQueryEventObject} e 
  */
-function clearInstances() {
-    updateServerInstances('remove-all-instances', '--', null, null, null)
-    multipleInstances = {}
-    restoreInstances()
-    updateRepeatInstrumentToolbar()
+function viewInstances(e) {
+    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
+    
+    log('viewInstances with preset \'' + presetId + '\'')
 }
 
-/**
- * Determines the number of total selected instances and updates the counter in the
- * repeat instrument toolbar
- */
-function updateRepeatInstrumentToolbar() {
-    var count = 0
-    rhpState.record_selected = multipleRecords[rhpState.record] == true
-    if (rhpState) {
-        Object.keys(multipleInstances).forEach(function(rit) {
-            Object.keys(multipleInstances[rit]).forEach(function(instance) {
-                if (multipleInstances[rit][instance]) {
-                    count++
-                }
-            })
-        })
-    }
-    $('.multiple-em-instances-total-count').text(count)
-    $('.multiple-em-toolbar-button').prop('disabled', count == 0)
-    $('.multiple-em-dropdown-toggle-view').prop('disabled', count == 0 || !DTO.rhp.viewPresets.length)
-    $('.multiple-em-dropdown-toggle-update').prop('disabled', count == 0 || !DTO.rhp.updatePresets.length)
-    if (!rhpState.record_selected) {
-        $('.multiple-em-toggle-display').hide()
-        $('.multiple-em-rit').hide(100)
-        $('input[data-multiple-em-instance]').prop('checked', false)
-    }
-}
 
 /**
- * Adds module UI to all repeating instrument tables
+ * Show the update instances dialog
+ * @param {JQueryEventObject} e 
  */
-function setupRecordHomePage() {
-    // Setup UI for each repeating instrument table
-    Object.keys(DTO.rhp.rit).forEach(function(rit) {
-        // Initialize Selected Instances store
-        multipleInstances[rit] = {}
-        DTO.rhp.rit[rit].forEach(function(instance) {
-            multipleInstances[rit][instance] = true
-        })
-        // Set initial state to hidden
-        rhpState.visible[rit] = false
-        // Build HTML
-        var $rit = buildRepeatInstrumentTableMenu(rit)
-        // Hook up events
-        $rit.find('a[data-multiple-em-action]').on('click', function() {
-            var command = this.getAttribute('data-multiple-em-action')
-            switch(command) {
-                case 'toggle': {
-                    toggleRepeatInstrumentTableMenu(rit)
-                    break
-                }
-                case 'apply': {
-                    applyRHPinstances(rit)
-                    break
-                }
-                case 'addAll': {
-                    $rit.find('input[data-multiple-em-instance]').prop('checked', true)
-                    applyRHPinstances(rit)
-                    break
-                }
-                case 'removeAll': {
-                    $rit.find('input[data-multiple-em-instance]').prop('checked', false)
-                    applyRHPinstances(rit)
-                    break
-                }
-            }
-        })
-        // Update count
-        $rit.find('.multiple-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
-        if (DTO.rhp.activate && rhpState.record_selected) toggleRepeatInstrumentTableMenu(rit)
-    })
-    // Build the repeating instruments toolbar
-    buildRepeatInstrumentToolbar()
-    // Is the record in the selection?
-    rhpState.record_selected = multipleRecords[rhpState.record] == true
-    if (rhpState.record_selected) {
-        $('.multiple-em-rit').show()
-        updateRepeatInstrumentToolbar()
-    }
-    // Hook up modal events
-    $('.multiple-em-delete-confirmation-modal button.multiple-em-confirmed').on('click', deletionConfirmed)
-    // Remove max width - TODO - this is not perfect
-    $('#repeating_forms_table_parent').children('div').css('max-width', '33%').css('flex', '0 0 33%')
-}
-
-/**
- * Adds or removes the current record to the Record Selection.
- * @param {any} override 
- */
-function addRemoveRecord(override) {
-    /** @type {UpdateDiff} */
-    var diff = {}
-    rhpState.$addRemoveLink.hide()
-    if (typeof override != 'boolean') {
-        rhpState.record_selected = !rhpState.record_selected
-    }
-    else {
-        rhpState.record_selected = override == true
-    }
-    multipleRecords[rhpState.record] = rhpState.record_selected
-    diff[rhpState.record] = rhpState.record_selected
-    if (rhpState.record_selected) {
-        $('.multiple-em-rit').show(100)
-        if (DTO.rhp.activate) {
-            $('.multiple-em-toggle-display').show()
-        }
-    }
-    else {
-        // Clear all instances
-        Object.keys(DTO.rhp.rit).forEach(function(rit) {
-            rhpState.visible[rit] = false
-            applyRHPinstances(rit)
-        })
-    }
-    updateServerSelection('update-records', diff)
-    updateRepeatInstrumentToolbar()
-}
-
-/**
- * Determines whether the Record Home Page is shown for a new or existing 
- * record and sets some state accordingly.
- */
-function determineRecordState() {
-    var url = $('#record-home-link').attr('href')
-    if (url.includes('&auto=')) {
-        DTO.rhp.init = false
-        rhpState.record = null
-    }
-    else {
-        url.split('&').forEach(function(part) {
-            if (part.startsWith('id=')) rhpState.record = part.substr(3)
-        })
-        rhpState.record_selected = multipleRecords[rhpState.record] == true
-    }
-    log('Record = ' + rhpState.record + (rhpState.record_selected ? ' (selected)' : ''))
+function updateInstances(e) {
+    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
+    
+    log('updateInstances with preset \'' + presetId + '\'')
 }
 
 //#endregion
 
+
+//#endregion (Record Home Page)
 
 
 //#region -- Modal Events -----------------------------------------------------------------
@@ -718,14 +776,50 @@ function deletionConfirmed() {
 //#endregion
 
 
+//#region -- General UI Helpers -----------------------------------------------------------
+
+/**
+ * Gets the Multiple brand icon.
+ */
+function getBrandIconHTML() {
+    return '<i class="far fa-check-square multiple-em-logo"></i>'
+}
+
+/**
+ * Replaces a buttons content with a spinner.
+ * @param {JQuery<Element>} $btn 
+ */
+function spinButton($btn) {
+    var $temp = $('<div style="display:none;" class="multiple-em-spinning"></div>')
+    $temp.html($btn.html())
+    $btn.width($btn.width()) // Preserve width
+    $btn.html('<div class="multiple-em-spinner"><i class="fas fa-spinner fa-pulse"></i></div>')
+    $btn.append($temp)
+}
+
+/**
+ * Restores a spinning button's content.
+ * @param {JQuery<Element>} $btn 
+ * @param {boolean|null} success 
+ */
+function unspinButton($btn, success) {
+    $btn.find('.multiple-em-spinner').remove()
+    $btn.html($btn.find('.multiple-em-spinning').html())
+    $btn.addClass('multiple-em-btn-success')
+    setTimeout(function() {
+        $btn.removeClass('multiple-em-btn-success')
+    }, 500);
+}
+
+//#endregion
+
+
+//#region -- Record Selection ------------------------------------------------------------
 
 function toggleAll() {
     $('input[data-multiple-em-record]').prop('checked', 
         $('input.multiple-em-toggle-all').prop('checked'))
 }
-
-
-//#region -- Record Selection ------------------------------------------------------------
 
 /**
  * Adds all currently checked dashboard records to the Record Selection and
@@ -799,8 +893,6 @@ function clearAllRecords() {
 //#endregion
 
 
-
-
 //#region -- Ajax ------------------------------------------------------------------------
 
 /**
@@ -825,7 +917,7 @@ function updateServerSelection(cmd, diff) {
     })
     .done(function(data, textStatus, jqXHR) {
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
-        if (DTO.rhp.init) updateRepeatInstrumentToolbar()
+        if (DTO.rhp.init) updateRHPToolbars()
         updateDataCollectionLink()
         log('Ajax Success', jqXHR, 'Records updated. Currently selected:', multipleRecords)
     })
