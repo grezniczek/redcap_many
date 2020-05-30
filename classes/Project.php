@@ -4,11 +4,13 @@ use \Project as REDCap_Project;
 use \User as REDCap_User;
 use \UserRights as REDCap_UserRights;
 use \Exception;
+use \ExternalModules\Framework;
 
 class Project
 {
-    /** @var \ExternalModules\Framework The EM framework */
-    private $framework;
+    /** @var Framework The EM Framework instance */
+    private $framework = null;
+
     /** @var int The project id */
     private $project_id;
     /** @var REDCap_Project */
@@ -16,7 +18,7 @@ class Project
 
     /**
      * Instantiate a framework Project class.
-     * @param \ExternalModules\Framework $framework
+     * @param Framework $framework The EM Framework instance
      * @param string|int|null $project_id (optional, current project assumed)
      * @return Project
      * @throws Exception Invalid project id, user, or when unable to determine
@@ -25,6 +27,11 @@ class Project
         return new Project($framework, $project_id);
     }
 
+    /**
+     * Constructor
+     * @param Framework $framework The EM Framework instance
+     * @param int $project_id
+     */
     private function __construct($framework, $project_id) {
         if ($framework == null) {
             throw new \Exception("Must provide a Framework instance.");
@@ -104,6 +111,8 @@ class Project
     #endregion
 
 
+
+
     #region -- Events ----------------------------------------------------------------
 
     /**
@@ -167,10 +176,147 @@ class Project
             null : $this->proj->isRepeatingEvent($event_id);
     }
 
+    /**
+     * Gets a list of event ids the form is part of.
+     * @param string $form The unique form name.
+     * @return array<int>
+     */
+    public function getEventsByForm($form) {
+        $events = array();
+        foreach ($this->proj->eventsForms as $event_id => $forms) {
+            if (in_array($form, $forms)) {
+                array_push($events, $event_id);
+            }
+        }
+        return $events;
+    }
+
+    /**
+     * Gets a list of event ids of all events in the project.
+     * @return array<int>
+     */
+    public function getEvents() {
+        return array_keys($this->proj->eventInfo);
+    }
+
+    /**
+     * Gets a data structure of events and the forms in them, optionally limited 
+     * by reapeat state (events or forms).
+     * 
+     * The returned array is structured like so:
+     * [
+     *   event_id => [
+     *      form_name => "form"|"event"|"" - indicating whether the form, event, or neither is repeating
+     *      ...
+     *   ],
+     *   ...
+     * ]
+     * 
+     * @param boolean|null $eventRepeating Event must repeat (TRUE), must not repeat (FALSE), or either (NULL)
+     * @param boolean|null $formRepeating Form must repeat (TRUE), must not repeat (FALSE), or either (NULL)
+     */
+    public function getEventsForms($eventRepeating = null, $formRepeating = null) {
+        if ($formRepeating && $eventRepeating) {
+            // Impossible
+            return array();
+        }
+        $ef = array();
+        foreach ($this->getEvents() as $event_id) {
+            foreach ($this->getFormsByEvent($event_id) as $form) {
+                if ($this->isFormRepeating($form, $event_id)) {
+                    $type = "form";
+                }
+                else if ($this->isEventRepeating($event_id)) {
+                    $type = "event";
+                }
+                else {
+                    $type = "";
+                }
+                // Add based on filter
+                $passEvent = $eventRepeating === null ||
+                    ($eventRepeating === false && $type != "event") ||
+                    ($eventRepeating === true && $type == "event");
+                $passForm = $formRepeating === null ||
+                    ($formRepeating === false && $type != "form") ||
+                    ($formRepeating === true && $type == "form");
+                if ($passEvent && $passForm) {
+                    $ef[$event_id][$form] = $type;
+                }
+            }
+        }
+        return $ef;
+    }
+
     #endregion
 
 
     #region -- Forms -----------------------------------------------------------------
+
+    /**
+     * Gets a list of all forms in the project.
+     * @return array<string>
+     */
+    public function getForms() {
+        return array_keys($this->proj->forms);
+    }
+
+    /**
+     * Gets a list of all forms in the event.
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @return array<string>
+     */
+    public function getFormsByEvent($event) {
+        $event_id = $this->getEventId($event);
+        return $event_id === null ? array() : array_values($this->proj->eventsForms[$event_id]);
+    }
+
+    /**
+     * Gets a data structure of forms and the events they are on, optionally limited 
+     * by reapeat state (forms or events).
+     * 
+     * The returned array is structured like so:
+     * [
+     *   form_name => [
+     *      event_id => "form"|"event"|"" - indicating whether the form, event, or neither is repeating
+     *      ...
+     *   ],
+     *   ...
+     * ]
+     * 
+     * @param boolean|null $eventRepeating Event must repeat (TRUE), must not repeat (FALSE), or either (NULL)
+     * @param boolean|null $formRepeating Form must repeat (TRUE), must not repeat (FALSE), or either (NULL)
+     */
+    public function getFormsEvents($formRepeating = null, $eventRepeating = null) {
+        if ($formRepeating && $eventRepeating) {
+            // Impossible
+            return array();
+        }
+        $fe = array();
+        foreach ($this->getForms() as $form) {
+            foreach ($this->getEventsByForm($form) as $event_id) {
+                if ($this->isFormRepeating($form, $event_id)) {
+                    $type = "form";
+                }
+                else if ($this->isEventRepeating($event_id)) {
+                    $type = "event";
+                }
+                else {
+                    $type = "";
+                }
+                // Add based on filter
+                $passEvent = $eventRepeating === null ||
+                    ($eventRepeating === false && $type != "event") ||
+                    ($eventRepeating === true && $type == "event");
+                $passForm = $formRepeating === null ||
+                    ($formRepeating === false && $type != "form") ||
+                    ($formRepeating === true && $type == "form");
+                if ($passEvent && $passForm) {
+                    $fe[$form][$event_id] = $type;
+                }
+            }
+        }
+        return $fe;
+    }
 
     /**
      * Checks whether a form exists in the project.

@@ -27,6 +27,9 @@ var rls = {
 /** @type {MultipleRecords} */
 var multipleRecords = {}
 
+/** @type {MultipleForms} */
+var multipleForms = {}
+
 /** @type {MultipleInstances} */
 var multipleInstances = {}
 
@@ -42,7 +45,8 @@ var rhpState = {
     $addRemoveLink: null,
     record: null,
     record_selected: false,
-    visible: {}
+    ritVisible: {},
+    egtVisible: false
 }
 
 
@@ -226,40 +230,6 @@ function updateRecordStatusDashboardSelection() {
 
 //#region -- Record Home Page ------------------------------------------------------------
 
-/**
- * Applies changes to a repeating instrument table to the selected instances
- * @param {string} rit repeat_instrument_table-event_id-form_name
- */
-function applyRHPInstances(rit) {
-    var $rit = $('#' + rit)
-    var count = 0
-    // Update data
-    /** @type {UpdateDiff} */ 
-    var diff = {}
-    $rit.find('input[data-multiple-em-instance]').each(function() {
-        var $cb = $(this)
-        if (typeof multipleInstances[rit] == 'undefined') {
-            multipleInstances[rit] = {}
-        }
-        var checked = $cb.prop('checked')
-        var instance = parseInt($cb.attr('data-multiple-em-instance'))
-        multipleInstances[rit][instance] = checked
-        diff[instance] = checked
-        if (checked) count++
-    })
-    // Update server
-    if (count == 0) {
-        updateServerInstances('remove-all-instances', rit, null, null, null)
-    }
-    else {
-        updateServerInstances('update-instances', rit, diff, null, null)
-    }
-    // Update counters
-    $rit.find('.multiple-em-rit-instance-count').text(count)
-    updateRHPToolbars()
-}
-
-
 //#region ---- User Interface Building & Handling ----------------------------------------
 
 /**
@@ -267,8 +237,8 @@ function applyRHPInstances(rit) {
  * @param {string} rit repeat_instrument_table-event_id-form_name
  */
 function toggleRepeatInstrumentTableMenu(rit) {
-    rhpState.visible[rit] = !rhpState.visible[rit]
-    if (rhpState.visible[rit]) {
+    rhpState.ritVisible[rit] = !rhpState.ritVisible[rit]
+    if (rhpState.ritVisible[rit]) {
         $('#' + rit + ' .multiple-em-toggle-display').show()
     }
     else {
@@ -277,8 +247,24 @@ function toggleRepeatInstrumentTableMenu(rit) {
 }
 
 /**
+ * Toggles display of all repeat instance table menus
+ */
+function toggleAllRepeatInstrumentTableMenus() {
+    // Base on state of first
+    var rits = Object.keys(rhpState.ritVisible)
+    if (rits.length) {
+        var visible = rhpState.ritVisible[rits[0]]
+        rits.forEach(function(rit) {
+            rhpState.ritVisible[rit] = visible
+            toggleRepeatInstrumentTableMenu(rit)
+        })
+    }
+}
+
+/**
  * Builds the UI for a repeating instrument table
  * @param {string} rit repeat_instrument_table-event_id-form_name
+ * @returns {JQuery<HTMLElement>}
  */
 function buildRepeatInstrumentTableMenu(rit) {
     var parts = rit.split('-')
@@ -295,9 +281,8 @@ function buildRepeatInstrumentTableMenu(rit) {
                 .append(' ')
                 .append($('<a href="javascript:;" data-multiple-em-action="toggle"></a>').text(DTO.name))
                 .append('<span class="badge badge-secondary multiple-em-rit-instance-count">0</span>')
-                .append($('<div class="multiple-em-rit-menu multiple-em-toggle-display" style="display:none;"></div>')
-                    .append($('<a href="javascript:;" data-multiple-em-action="apply"></a>').text('Apply')) // tt-fy
-                    .append(' | ')
+                .append($('<span class="multiple-em-rit-menu multiple-em-toggle-display" style="display:none;"></span>')
+                    .append('&ndash; ')
                     .append($('<a href="javascript:;" data-multiple-em-action="addAll"></a>').text('Add all')) // tt-fy
                     .append(' | ')
                     .append($('<a href="javascript:;" data-multiple-em-action="removeAll"></a>').text('Remove all')) // tt-fy
@@ -317,7 +302,7 @@ function buildRepeatInstrumentTableMenu(rit) {
                .prop('checked', typeof multipleInstances[rit] != 'undefined' && multipleInstances[rit][instance] == true)
             // Clicking the TD to the left should act as clicking the checkbox
             $td.on('click', function(e) {
-                if (rhpState.visible[rit] && e.target.nodeName == 'TD') {
+                if (rhpState.ritVisible[rit] && e.target.nodeName == 'TD') {
                     $cb.prop('checked', !$cb.prop('checked'))
                 }
             })
@@ -340,31 +325,36 @@ function buildRepeatInstrumentTableMenu(rit) {
 
 /**
  * Builds the repeating instrument toolbar
+ * @returns {JQuery<HTMLElement>}
  */
 function buildRepeatInstrumentToolbar() {
     var $tb = $('<div class="multiple-em-rit multiple-em-rit-toolbar" style="display:none"></div>')
-        .appendTo('#repeating_forms_table_parent_title')
         .append($('<div class="btn-toolbar" role="toolbar"></div>')
             .append($('<div class="btn-toolbar-text"></div>')
                 .append(getBrandIconHTML())
-                .append(' ' + DTO.name + ' ' + '<i>Instances</i> ')
+                .append(' ')
+                .append($('<a href="javascript:;" data-multiple-em-action="toggle"></a>')
+                    .html(DTO.name + ' ' + '<i>Instances</i>')
+                    .on('click', toggleAllRepeatInstrumentTableMenus)
+                )
+                .append(' ')
                 .append('<span class="multiple-em-instances-total-count badge badge-secondary font-weight-normal">0</span>')
                 .append(' &ndash; ') // tt-fy
             )
-            // Clear
-            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="clear-instances"></button>')
-                .text('Clear') // tt-fy
-                .on('click', clearInstances)
+            // Apply
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="apply-instances"></button>')
+                .text('Apply') // tt-fy
+                .on('click', applyRecordHomePageInstances)
             )
             .append('|')
-            // Restore
-            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="restore-instances"></button>')
-                .text('Restore') // tt-fy
-                .on('click', restoreInstances)
+            // Reset
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="reset-instances"></button>')
+                .text('Reset') // tt-fy
+                .on('click', resetRecordHomePageInstances)
             )
             // View
             .append($('<div class="btn-group btn-group-xs"></div>')
-                .append($('<button type="button" class="btn btn-secondary multiple-em-toolbar-button" data-multiple-em-action="view-instances"></button>')
+                .append($('<button type="button" class="btn btn-secondary multiple-em-rit-toolbar-button" data-multiple-em-action="view-instances"></button>')
                     .html('View') // tt-fy
                     .on('click', viewInstances)
                 )
@@ -373,7 +363,7 @@ function buildRepeatInstrumentToolbar() {
             )
             // Update
             .append($('<div class="btn-group btn-group-xs"></div>')
-                .append($('<button type="button" class="btn btn-secondary multiple-em-toolbar-button" data-multiple-em-action="update-instances"></button>')
+                .append($('<button type="button" class="btn btn-secondary multiple-em-rit-toolbar-button" data-multiple-em-action="update-instances"></button>')
                     .html('Update') // tt-fy
                     .on('click', updateInstances)
                 )
@@ -381,24 +371,33 @@ function buildRepeatInstrumentToolbar() {
                 .append('<div class="dropdown-menu multiple-em-dropdown-update"></div>')
             )
         )
+        .appendTo('#repeating_forms_table_parent_title')
+        .find('.btn-toolbar')
     if (DTO.userRights.lock_record) {
         // Lock and Unlock
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="lock-record-instances"></button>')
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-rit-toolbar-button" data-multiple-em-action="lock-record-instances"></button>')
             .text('Lock') // tt-fy
             .on('click', lockUnlockInstances)
         )
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="unlock-record-instances"></button>')
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-rit-toolbar-button" data-multiple-em-action="unlock-record-instances"></button>')
             .text('Unlock') // tt-fy
             .on('click', lockUnlockInstances)
         )
     }
     if (DTO.userRights.record_delete) {
         // Delete
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger multiple-em-toolbar-button" data-multiple-em-action="delete-instances"></button>')
+        $tb.append($('<button class="btn btn-xs btn-danger multiple-em-rit-toolbar-button" data-multiple-em-action="delete-instances"></button>')
             .text('Delete') // tt-fy
             .on('click', showDeleteInstances)
         )
     }
+    // Clear
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rit-toolbar-button" data-multiple-em-action="clear-instances"></button>')
+        .text('Clear') // tt-fy
+        .on('click', function() {
+            clearInstances(true)
+        })
+    )
     // Add view and update presets
     var $viewPresets = $tb.find('.multiple-em-dropdown-view')
     DTO.rhp.viewPresets.forEach(function(preset) {
@@ -416,61 +415,140 @@ function buildRepeatInstrumentToolbar() {
             .on('click', updateInstances)
         )
     })
+    return $tb
 }
 
 /**
  * Builds the instrument toolbar
+ * @returns {JQuery<HTMLElement>}
  */
 function buildInstrumentToolbar() {
     var $tb = $('<div class="multiple-em-egt multiple-em-egt-toolbar" style="display:none"></div>')
-        .before('#event_grid_table')
         .append($('<div class="btn-toolbar" role="toolbar"></div>')
             .append($('<div class="btn-toolbar-text"></div>')
                 .append(getBrandIconHTML())
-                .append(' ' + DTO.name + ' ' + '<i>Forms</i> ')
+                .append(' ')
+                .append($('<a href="javascript:;" data-multiple-em-action="toggle"></a>')
+                    .html(DTO.name + ' ' + '<i>Forms</i>')
+                    .on('click', toggleEventGridTable)
+                )
+                .append(' ')
                 .append('<span class="multiple-em-forms-total-count badge badge-secondary font-weight-normal">0</span>')
                 .append(' &ndash; ') // tt-fy
             )
-            // Clear
-            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="clear-forms"></button>')
-                .text('Clear') // tt-fy
-                .on('click', clearForms)
+            // Apply
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="apply-forms"></button>')
+                .text('Apply') // tt-fy
+                .on('click', applyRecordHomePageForms)
             )
             .append('|')
-            // Restore
+            // Reset
             .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="restore-forms"></button>')
-                .text('Restore') // tt-fy
-                .on('click', restoreForms)
+                .text('Reset') // tt-fy
+                .on('click', resetRecordHomePageForms)
             )
         )
+        .insertBefore('#event_grid_table')
+        .find('.btn-toolbar')
     if (DTO.userRights.lock_record) {
         // Lock and Unlock
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="lock-record-forms"></button>')
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-egt-toolbar-button" data-multiple-em-action="lock-record-forms"></button>')
             .text('Lock') // tt-fy
             .on('click', lockUnlockForms)
         )
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-secondary multiple-em-toolbar-button" data-multiple-em-action="unlock-record-forms"></button>')
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-egt-toolbar-button" data-multiple-em-action="unlock-record-forms"></button>')
             .text('Unlock') // tt-fy
             .on('click', lockUnlockForms)
         )
     }
     if (DTO.userRights.record_delete) {
         // Delete
-        $tb.find('.btn-toolbar').append($('<button class="btn btn-xs btn-danger multiple-em-toolbar-button" data-multiple-em-action="delete-forms"></button>')
+        $tb.append($('<button class="btn btn-xs btn-danger multiple-em-egt-toolbar-button" data-multiple-em-action="delete-forms"></button>')
             .text('Delete') // tt-fy
             .on('click', showDeleteForms)
         )
     }
+    // Clear
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-egt-toolbar-button" data-multiple-em-action="clear-forms"></button>')
+        .text('Clear') // tt-fy
+        .on('click', function() {
+            clearForms(true)
+        })
+    )
+    return $tb
 }
 
-function restoreForms() {
+/**
+ * Adds form checkboxes to the event grid table.
+ */
+function augmentEventGridTable() {
+    var $egt = $('#event_grid_table')
+    // Add extra header columns
+    $egt.find('th.evGridHdr').before('<th style="display:none;" class="evGridHdr multiple-em-egt-col multiple-em-toggle-display"></th>')
+    // Add chechboxes
+    $egt.find('td').not('.labelform').each(function() {
+        var $td = $(this)
+        var href = $td.find('a').attr('href')
+        if (typeof href == 'undefined' || href == 'javascript:;') {
+            // Add an empty cell
+            $td.before('<td style="display:none;" class="multiple-em-egt-col multiple-em-toggle-display"></td>')
+        }
+        else {
+            // Parse href to extract fei = form name (page), event_id, and instance
+            var fei = {
+                page: null,
+                event_id: null,
+                instance: null
+            }
+            var parts = href.split('&')
+            Object.keys(fei).forEach(function(item) {
+                var match = item + '='
+                parts.forEach(function(part) {
+                    if (part.startsWith(match)) {
+                        fei[item] = part.substr(match.length)
+                    }
+                })
+            })
+            var feiCode = fei.page + '-' + fei.event_id + '-' + fei.instance
+            // Add a checkbox
+            var $newTD = $('<td style="display:none;" class="multiple-em-checkbox-col multiple-em-toggle-display"><div class="multiple-em-checkbox-wrapper"><input type="checkbox"></div></td>').insertBefore($td)
+            var $cb = $newTD.find('input[type=checkbox]')
+            $cb.attr('data-multiple-em-record', rhpState.record)
+            $cb.attr('data-multiple-em-fei', feiCode)
+            $cb.prop('checked', multipleForms[feiCode] === true)
+        }
+    })
+    if (DTO.rhp.activate && rhpState.record_selected) toggleEventGridTable()
+}
 
+/**
+ * Toggles visibility of the form checkboxes in the event grid table.
+ */
+function toggleEventGridTable() {
+    rhpState.egtVisible = !rhpState.egtVisible
+    if (rhpState.egtVisible) {
+        $('#event_grid_table .multiple-em-toggle-display').show()
+    }
+    else {
+        $('#event_grid_table .multiple-em-toggle-display').hide()
+    }
+}
+
+/**
+ * Restores the check state of the form checkboxes.
+ */
+function resetRecordHomePageForms() {
+    $('#event_grid_table').find('input[data-multiple-em-fei]').each(function() {
+        var $cb = $(this)
+        var fei = $cb.attr('data-multiple-em-fei')
+        $cb.prop('checked', multipleForms[fei] == true)
+    })
 }
 
 /**
  * Restores checkboxes to reflect the state in Instance Selection
  */
-function restoreInstances() {
+function resetRecordHomePageInstances() {
     Object.keys(DTO.rhp.rit).forEach(function(rit) {
         var $rit = $('#' + rit)
         $rit.find('input.multiple-em-toggle-all').prop('checked', false)
@@ -482,40 +560,81 @@ function restoreInstances() {
     })
 }
 
-function clearForms() {
-
+/**
+ * Removes all forms from the Forms Selection
+ * @param {boolean} serverUpdate 
+ */
+function clearForms(serverUpdate) {
+    if (serverUpdate) {
+        updateServerForms('remove-all-forms', null, null, null)
+    }
+    multipleForms = {}
+    resetRecordHomePageForms()
+    updateRecordHomePageToolbars()
 }
 
 /**
  * Removes all instances from the Instances Selection
+ * @param {boolean} serverUpdate 
  */
-function clearInstances() {
-    updateServerInstances('remove-all-instances', '--', null, null, null)
+function clearInstances(serverUpdate) {
+    if (serverUpdate) {
+        updateServerInstances('remove-all-instances', null, null, null)
+    }
     multipleInstances = {}
-    restoreInstances()
-    updateRHPToolbars()
+    resetRecordHomePageInstances()
+    updateRecordHomePageToolbars()
 }
 
 /**
  * Determines the number of total selected instances and updates the counter in the
  * repeat instrument toolbar
  */
-function updateRHPToolbars() {
-    var count = 0
+function updateRecordHomePageToolbars() {
     rhpState.record_selected = multipleRecords[rhpState.record] == true
+    // Event Grid Table
+    var egt_count = 0
+    if (rhpState) {
+        Object.keys(multipleForms).forEach(function(fei) {
+            if (multipleForms[fei]) {
+                egt_count++
+            }
+        })
+    }
+    var $egtCount = $('.multiple-em-forms-total-count').text(egt_count)
+    if (egt_count) {
+        $egtCount.addClass('badge-primary')
+        $egtCount.removeClass('badge-secondary')
+    }
+    else {
+        $egtCount.addClass('badge-secondary')
+        $egtCount.removeClass('badge-primary')
+    }
+    $('.multiple-em-egt-toolbar-button').prop('disabled', egt_count == 0)
+    // Repeating Instruments
+    var rit_count = 0
     if (rhpState) {
         Object.keys(multipleInstances).forEach(function(rit) {
             Object.keys(multipleInstances[rit]).forEach(function(instance) {
                 if (multipleInstances[rit][instance]) {
-                    count++
+                    rit_count++
                 }
             })
         })
     }
-    $('.multiple-em-instances-total-count').text(count)
-    $('.multiple-em-toolbar-button').prop('disabled', count == 0)
-    $('.multiple-em-dropdown-toggle-view').prop('disabled', count == 0 || !DTO.rhp.viewPresets.length)
-    $('.multiple-em-dropdown-toggle-update').prop('disabled', count == 0 || !DTO.rhp.updatePresets.length)
+    var $ritCount = $('.multiple-em-instances-total-count').text(rit_count)
+    if (rit_count) {
+        $ritCount.addClass('badge-primary')
+        $ritCount.removeClass('badge-secondary')
+    }
+    else {
+        $ritCount.addClass('badge-secondary')
+        $ritCount.removeClass('badge-primary')
+    }
+    $('.multiple-em-rit-toolbar-button').prop('disabled', rit_count == 0)
+    $('.multiple-em-dropdown-toggle-view').prop('disabled', rit_count == 0 || !DTO.rhp.viewPresets.length)
+    $('.multiple-em-dropdown-toggle-update').prop('disabled', rit_count == 0 || !DTO.rhp.updatePresets.length)
+    // Hide toolbars when record is not selected
     if (!rhpState.record_selected) {
         $('.multiple-em-toggle-display').hide()
         $('.multiple-em-rit').hide(100)
@@ -523,6 +642,11 @@ function updateRHPToolbars() {
         $('input[data-multiple-em-instance]').prop('checked', false)
         $('input[data-multiple-em-fomm]').prop('checked', false)
     }
+    // Position fix for event grid table collapse button
+    var height = rhpState.record_selected ? 0 : $('.multiple-em-egt-toolbar').height() + 12
+    var pos = $('#event_grid_table').position()
+    var $egb = $('button[targetid=event_grid_table]')
+    $egb.animate({ top: (pos.top - height + 3) + 'px'}, 100)
 }
 
 /**
@@ -537,7 +661,7 @@ function setupRecordHomePage() {
             multipleInstances[rit][instance] = true
         })
         // Set initial state to hidden
-        rhpState.visible[rit] = false
+        rhpState.ritVisible[rit] = false
         // Build HTML
         var $rit = buildRepeatInstrumentTableMenu(rit)
         // Hook up events
@@ -548,18 +672,14 @@ function setupRecordHomePage() {
                     toggleRepeatInstrumentTableMenu(rit)
                     break
                 }
-                case 'apply': {
-                    applyRHPInstances(rit)
-                    break
-                }
                 case 'addAll': {
                     $rit.find('input[data-multiple-em-instance]').prop('checked', true)
-                    applyRHPInstances(rit)
+                    applyRecordHomePageInstances()
                     break
                 }
                 case 'removeAll': {
                     $rit.find('input[data-multiple-em-instance]').prop('checked', false)
-                    applyRHPInstances(rit)
+                    applyRecordHomePageInstances()
                     break
                 }
             }
@@ -568,6 +688,12 @@ function setupRecordHomePage() {
         $rit.find('.multiple-em-rit-instance-count').text(DTO.rhp.rit[rit].length)
         if (DTO.rhp.activate && rhpState.record_selected) toggleRepeatInstrumentTableMenu(rit)
     })
+    // Modify the event grid table
+    // Initialize Selected Forms store
+    DTO.rhp.fei.forEach(function(fei) {
+        multipleForms[fei] = true
+    })
+    augmentEventGridTable()
     // Build the toolbars
     buildInstrumentToolbar()
     buildRepeatInstrumentToolbar()
@@ -576,7 +702,7 @@ function setupRecordHomePage() {
     if (rhpState.record_selected) {
         $('.multiple-em-rit').show()
         $('.multiple-em-egt').show()
-        updateRHPToolbars()
+        updateRecordHomePageToolbars()
     }
     // Hook up modal events
     $('.multiple-em-delete-confirmation-modal button.multiple-em-confirmed').on('click', deletionConfirmed)
@@ -586,14 +712,84 @@ function setupRecordHomePage() {
 
 //#endregion
 
-//#region ---- Add / Remove Record -------------------------------------------------------
+//#region ---- Record / Form / Instance Selection ----------------------------------------
+
+/**
+ * Applies changes to a repeating instrument table to the selected instances
+ */
+function applyRecordHomePageInstances() {
+    /** @type {InstancesDiff} */
+    var diffs = {}
+    var diffsCount = 0
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        var $rit = $('#' + rit)
+        var instancesCount = 0
+        var diffCount = 0
+        // Update data
+        /** @type {RecordDiff} */ 
+        var diff = {}
+        $rit.find('input[data-multiple-em-instance]').each(function() {
+            var $cb = $(this)
+            if (typeof multipleInstances[rit] == 'undefined') {
+                multipleInstances[rit] = {}
+            }
+            var checked = $cb.prop('checked')
+            var instance = parseInt($cb.attr('data-multiple-em-instance'))
+            // Different from current?
+            var prev = typeof multipleInstances[rit][instance] != 'undefined'
+            if ((checked && !prev) || (prev && multipleInstances[rit][instance] != checked)) {
+                diff[instance] = checked
+                diffCount++
+            }
+            multipleInstances[rit][instance] = checked
+            if (checked) instancesCount++
+        })
+        if (diffCount > 0) {
+            diffs[rit] = diff
+            diffsCount++
+        }
+        // Update counter
+        $rit.find('.multiple-em-rit-instance-count').text(instancesCount)
+    })
+    // Update server
+    if (diffsCount) {
+        updateServerInstances('update-instances', diffs, null, null)
+    }
+    updateRecordHomePageToolbars()
+}
+
+function applyRecordHomePageForms() {
+    /** @type {FormDiff} */
+    var diff = {}
+    var diffCount = 0
+    var formsCount = 0
+    $('#event_grid_table').find('input[data-multiple-em-fei]').each(function() {
+        var $cb = $(this)
+        var checked = $cb.prop('checked')
+        var fei = $cb.attr('data-multiple-em-fei')
+        // Different from current?
+        var prev = typeof multipleForms[fei] != 'undefined'
+        if ((checked && !prev) || (prev && multipleForms[fei] != checked)) {
+            diff[fei] = checked
+            diffCount++
+        }
+        multipleForms[fei] = checked
+        if (checked) formsCount++
+    })
+    // Update server
+    if (diffCount) {
+        updateServerForms('update-forms', diff, null, null)
+    }
+    updateRecordHomePageToolbars()
+}
+
 
 /**
  * Adds or removes the current record to the Record Selection.
  * @param {any} override 
  */
 function addRemoveRecord(override) {
-    /** @type {UpdateDiff} */
+    /** @type {RecordDiff} */
     var diff = {}
     rhpState.$addRemoveLink.hide()
     if (typeof override != 'boolean') {
@@ -606,19 +802,26 @@ function addRemoveRecord(override) {
     diff[rhpState.record] = rhpState.record_selected
     if (rhpState.record_selected) {
         $('.multiple-em-rit').show(100)
+        $('.multiple-em-egt').show(100)
         if (DTO.rhp.activate) {
             $('.multiple-em-toggle-display').show()
         }
+        // Position fix for event grid table collapse button
+        var height = rhpState.record_selected ? 0 : $('.multiple-em-egt-toolbar').height() + 12
+        var pos = $('#event_grid_table').position()
+        var $egb = $('button[targetid=event_grid_table]')
+        $egb.animate({ top: (pos.top - height + 3) + 'px'}, 100)
     }
     else {
-        // Clear all instances
+        // Clear all forms and instances
+        rhpState.egtVisible = false
         Object.keys(DTO.rhp.rit).forEach(function(rit) {
-            rhpState.visible[rit] = false
-            applyRHPInstances(rit)
+            rhpState.ritVisible[rit] = false
         })
+        clearInstances(false)
+        clearForms(false)
     }
-    updateServerSelection('update-records', diff)
-    updateRHPToolbars()
+    updateServerRecords('update-records', diff)
 }
 
 /**
@@ -660,7 +863,7 @@ function lockUnlockInstances(e) {
         // Disable toolbar
         $('.multiple-em-rit-toolbar button').prop('disabled', true)
         spinButton($btn)
-        updateServerInstances(mode, '--', null, 
+        updateServerInstances(mode, null, 
             function() {
                 lockUnlockInstancesComplete($btn, null)
             }, 
@@ -677,7 +880,7 @@ function lockUnlockInstances(e) {
  */
 function lockUnlockInstancesComplete($btn, jqXHR) {
     unspinButton($btn, jqXHR == null)
-    updateRHPToolbars()
+    updateRecordHomePageToolbars()
     // Reload page
     if (jqXHR == null) setTimeout(function() { location.reload() }, 200)
 }
@@ -712,7 +915,7 @@ function deleteInstances() {
         log('Deleting instances:', multipleInstances)
         // Disable buttons.
         $('.multiple-em-delete-confirmation-modal button').prop('disabled', true)
-        updateServerInstances('delete-record-instances', '--', null, deletedInstances, deleteInstancesFailed)
+        updateServerInstances('delete-record-instances', null, deletedInstances, deleteInstancesFailed)
     }
 }
 
@@ -759,7 +962,6 @@ function updateInstances(e) {
 }
 
 //#endregion
-
 
 //#endregion (Record Home Page)
 
@@ -826,7 +1028,7 @@ function toggleAll() {
  * removes all that are not checked
  */
 function applyDashboardRecordSelection() {
-    /** @type {UpdateDiff} */
+    /** @type {RecordDiff} */
     var diff = {}
     $('input[data-multiple-em-record]').each(function() {
         var $cb = $(this)
@@ -843,7 +1045,7 @@ function applyDashboardRecordSelection() {
             multipleRecords[id] = checked
         }
     })
-    updateServerSelection('update-records', diff)
+    updateServerRecords('update-records', diff)
     log('Updated selection')
 }
 
@@ -864,7 +1066,7 @@ function addAllDashboardRecords() {
         multipleRecords[id] = true
         $cb.prop('checked', true)
     })
-    updateServerSelection('update-records', multipleRecords)
+    updateServerRecords('update-records', multipleRecords)
     log('Added all')
 }
 
@@ -878,7 +1080,7 @@ function removeAllDashboardRecords() {
         multipleRecords[id] = false
         $cb.prop('checked', false)
     })
-    updateServerSelection('remove-all-records', null)
+    updateServerRecords('remove-all-records', null)
     log('Removed all')
 }
 
@@ -887,7 +1089,7 @@ function removeAllDashboardRecords() {
  */ 
 function clearAllRecords() {
     multipleRecords = {}
-    updateServerSelection('remove-all-records', null)
+    updateServerRecords('remove-all-records', null)
 }
 
 //#endregion
@@ -896,15 +1098,15 @@ function clearAllRecords() {
 //#region -- Ajax ------------------------------------------------------------------------
 
 /**
- * Performs a server update
+ * Performs a server update for records.
  * Commands are:
  *  - update-records (includes a diff)
  *  - remove-all-records
  * 
  * @param {string} cmd The command to execute
- * @param {UpdateDiff} diff
+ * @param {RecordDiff} diff
  */
-function updateServerSelection(cmd, diff) {
+function updateServerRecords(cmd, diff) {
     var data = {
         command: cmd,
         diff: diff
@@ -917,7 +1119,7 @@ function updateServerSelection(cmd, diff) {
     })
     .done(function(data, textStatus, jqXHR) {
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
-        if (DTO.rhp.init) updateRHPToolbars()
+        if (DTO.rhp.init) updateRecordHomePageToolbars()
         updateDataCollectionLink()
         log('Ajax Success', jqXHR, 'Records updated. Currently selected:', multipleRecords)
     })
@@ -927,25 +1129,54 @@ function updateServerSelection(cmd, diff) {
 }
 
 /**
- * Performs a server update
+ * Performs a server update for (non-repeating) forms.
+ * Commands are:
+ *  - update-forms (includes a diff)
+ *  - remove-all-forms
+ * 
+ * @param {string} cmd The command to execute
+ * @param {FormDiff} diff
+ * @param {function} callbackDone
+ * @param {function} callbackFail
+ */
+function updateServerForms(cmd, diff, callbackDone, callbackFail) {
+    var data = {
+        command: cmd,
+        record: rhpState.record,
+        diff: diff
+    }
+    $.ajax({
+        url: DTO.updateUrl,
+        type: 'POST',
+        data: 'payload=' + JSON.stringify(data),
+        dataType: 'json'
+    })
+    .done(function(data, textStatus, jqXHR) {
+        log('Ajax Success:', jqXHR)
+        if (callbackDone) callbackDone()
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+        log('Ajax Failure: ', jqXHR, textStatus, errorThrown)
+        if (callbackFail) callbackFail(jqXHR)
+    })
+}
+
+/**
+ * Performs a server update for instances.
  * Commands are:
  *  - update-instances (includes a diff)
  *  - remove-all-instances
  * 
  * @param {string} cmd 
- * @param {string} rit repeat_instrument_table-event_id-form_name
- * @param {UpdateDiff} diff 
+ * @param {InstancesDiff} diffs 
  * @param {function} callbackDone
  * @param {function} callbackFail
  */
-function updateServerInstances(cmd, rit, diff, callbackDone, callbackFail) {
-    var parts = rit.split('-')
+function updateServerInstances(cmd, diffs, callbackDone, callbackFail) {
     var data = {
         command: cmd,
         record: rhpState.record,
-        event: parts[1],
-        form: parts[2],
-        diff: diff
+        diffs: diffs
     }
     log('Ajax Initiated:', data)
     $.ajax({

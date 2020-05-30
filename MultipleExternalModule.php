@@ -6,6 +6,7 @@ class MultipleExternalModule extends AbstractExternalModule
 {
 
     private const MULTIPLE_EM_SESSION_KEY_RECORDS = "multiple-em-selection-store-records";
+    private const MULTIPLE_EM_SESSION_KEY_FORMS = "multiple-em-selection-store-forms";
     private const MULTIPLE_EM_SESSION_KEY_INSTANCES = "multiple-em-selection-store-instances";
 
     function redcap_every_page_before_render($project_id) {
@@ -115,6 +116,7 @@ class MultipleExternalModule extends AbstractExternalModule
             "init" => false,
             "activate" => $this->getProjectSetting("rhp-active") === true,
             "rit" => array(),
+            "fei" => array(),
             "viewPresets" => array(),
             "updatePresets" => array(),
             "deleteConfirmTitle" => $this->tt("modal_delete_instances_title"),
@@ -133,14 +135,17 @@ class MultipleExternalModule extends AbstractExternalModule
                 if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
                 /** @var \DE\RUB\Utility\Project */
                 $project = Project::get($this->framework, $project_id);
-                $repeating = $project->getRepeatingFormsEvents();
+                // Repeating forms
+                $repeating = $project->getEventsForms(false, true);
                 $dto_rhp["rit"] = array();
-                foreach ($repeating["forms"] as $event_id => $forms) {
-                    foreach ($forms as $form) {
+                foreach ($repeating as $event_id => $forms) {
+                    foreach ($forms as $form => $_) {
                         $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
                         $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $event_id, $form);
                     }
                 }
+                // Non-repeating forms
+                $dto_rhp["fei"] = $this->loadSelectedForms($project_id, $record_id);
                 $this->includeDeleteConfirmationModal();
             }
         }
@@ -245,20 +250,17 @@ class MultipleExternalModule extends AbstractExternalModule
 
 
 
-    private function loadSelectedRecords($pid)
-    {
+    private function loadSelectedRecords($pid) {
         return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid]) ?
             $_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid] :
             array();
     }
 
-    private function saveSelectedRecords($pid, $selected)
-    {
+    private function saveSelectedRecords($pid, $selected) {
         $_SESSION[self::MULTIPLE_EM_SESSION_KEY_RECORDS][$pid] = $selected;
     }
 
-    public function updateRecords($diff)
-    {
+    public function updateRecords($diff) {
         $pid = $this->getProjectId();
         $records = $this->loadSelectedRecords($pid);
         foreach ($diff as $record_id => $is_selected) {
@@ -270,20 +272,20 @@ class MultipleExternalModule extends AbstractExternalModule
                     array_splice($records, $pos, 1);
                 }
                 $this->clearAllInstances("$record_id");
+                $this->clearAllForms("$record_id");
             }
         }
         $this->saveSelectedRecords($pid, array_values(array_unique($records, SORT_STRING)));
     }
 
-    public function clearRecords()
-    {
+    public function clearRecords() {
         $pid = $this->getProjectId();
         $this->saveSelectedRecords($pid, array());
         $this->clearAllInstances();
+        $this->clearAllForms();
     }
 
-    private function clearAllInstances($record_id = null)
-    {
+    public function clearAllInstances($record_id = null) {
         $pid = $this->getProjectId();
         if ($record_id) {
             unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
@@ -292,8 +294,42 @@ class MultipleExternalModule extends AbstractExternalModule
         }
     }
 
-    private function loadSelectedInstances($pid, $record_id, $event_id = null, $form = null)
-    {
+    public function updateForms($record_id, $diff) {
+        $pid = $this->getProjectId();
+        $forms = $this->loadSelectedForms($pid, $record_id);
+        foreach ($diff as $fei => $is_selected) {
+            if ($is_selected) {
+                array_push($forms, $fei);
+            } else {
+                $pos = array_search($fei, $forms);
+                if ($pos !== false) {
+                    array_splice($forms, $pos, 1);
+                }
+            }
+        }
+        $this->saveSelectedForms($pid, $record_id, $forms);
+    }
+
+    public function clearAllForms($record_id = null) {
+        $pid = $this->getProjectId();
+        if ($record_id) {
+            unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_FORMS][$pid][$record_id]);
+        } else {
+            unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_FORMS][$pid]);
+        }
+    }
+
+    private function loadSelectedForms($pid, $record_id) {
+        return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_FORMS][$pid][$record_id]) ?
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_FORMS][$pid][$record_id] :
+            array();
+    }
+
+    private function saveSelectedForms($pid, $record_id, $forms) {
+        $_SESSION[self::MULTIPLE_EM_SESSION_KEY_FORMS][$pid][$record_id] = $forms;
+    }
+
+    private function loadSelectedInstances($pid, $record_id, $event_id = null, $form = null) {
         if ($form == null && $event_id == null) {
             return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]) ?
                 $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id] :
@@ -311,14 +347,7 @@ class MultipleExternalModule extends AbstractExternalModule
         }
     }
 
-    private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances)
-    {
-        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid]))
-            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid] = array();
-        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]))
-            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id] = array();
-        if (!isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]))
-            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] = array();
+    private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances) {
         $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
     }
 
@@ -326,48 +355,36 @@ class MultipleExternalModule extends AbstractExternalModule
         return isset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form][$instance]);
     }
 
-    private function deleteSelectedInstancesForRecord($pid, $record_id)
-    {
+    private function deleteSelectedInstancesForRecord($pid, $record_id) {
         unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id]);
     }
 
-    private function deleteSelectedInstancesForRecordEvent($pid, $record_id, $event_id)
-    {
+    private function deleteSelectedInstancesForRecordEvent($pid, $record_id, $event_id) {
         unset($_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id]);
     }
 
-    public function updateInstances($record_id, $event_id, $form, $diff)
-    {
+    public function updateInstances($record_id, $diffs) {
         $pid = $this->getProjectId();
-        $instances = $this->loadSelectedInstances($pid, $record_id, $event_id, $form);
-        foreach ($diff as $instance => $is_selected) {
-            if ($is_selected) {
-                array_push($instances, $instance);
-            } else {
-                $pos = array_search($instance, $instances, true);
-                if ($pos !== false) {
-                    array_splice($instances, $pos, 1);
+        foreach ($diffs as $rit => $diff) {
+            $parts = explode("-", $rit);
+            $event_id = $parts[1] * 1;
+            $form = $parts[2];
+            $instances = $this->loadSelectedInstances($pid, $record_id, $event_id, $form);
+            foreach ($diff as $instance => $is_selected) {
+                if ($is_selected) {
+                    array_push($instances, $instance);
+                } else {
+                    $pos = array_search($instance, $instances, true);
+                    if ($pos !== false) {
+                        array_splice($instances, $pos, 1);
+                    }
                 }
             }
-        }
-        $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_values(array_unique($instances, SORT_NUMERIC)));
-    }
-
-    public function clearInstances($record_id, $event_id, $form)
-    {
-        $pid = $this->getProjectId();
-        if (empty($event_id) && empty($form)) {
-            $this->deleteSelectedInstancesForRecord($pid, $record_id);
-        } else if (empty($form)) {
-            $this->deleteSelectedInstancesForRecordEvent($pid, $record_id, $event_id);
-        } else {
-            $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array());
+            $this->saveSelectedInstances($pid, $record_id, $event_id, $form, array_values(array_unique($instances, SORT_NUMERIC)));
         }
     }
 
-
-    private function includeDeleteConfirmationModal()
-    {
+    private function includeDeleteConfirmationModal() {
         /** @var \ExternalModules\Framework */
         $fw = $this->framework;
         ?>

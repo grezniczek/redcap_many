@@ -90,6 +90,7 @@
  *  init: boolean
  *  activate: boolean
  *  rit: Object<string, number[]>
+ *  fei: string[]
  *  viewPresets: InstanceFieldPreset[]
  *  updatePresets: InstanceFieldPreset[],
  *  deleteConfirmTitle: string
@@ -103,7 +104,8 @@
  *  record: string
  *  record_selected: boolean
  *  $addRemoveLink: JQuery
- *  visible: Object<string, boolean>
+ *  ritVisible: Object<string, boolean>
+ *  egtVisible: boolean
  * }}
  */
 
@@ -128,10 +130,23 @@
  * @type {Object<string, Object<number, boolean>>}
  */
 
-
+/**
+ * @typedef MultipleForms
+ * @type {Object<string, boolean>}
+ */
 
 
 /**
- * @typedef UpdateDiff
+ * @typedef InstancesDiff
+ * @type {Object<string, Object<string, boolean>>}
+ */
+
+/**
+ * @typedef RecordDiff
  * @type {Object<string, boolean>}
+ */
+
+/**
+ * @typedef FormDiff
+ * @type {Object<string, Object<number, boolean>>}
  */

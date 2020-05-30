@@ -52,17 +52,28 @@ table.dataTable thead th.multiple-em-checkbox-col {
     font-weight: normal;
     margin-left: 0.5em;
 }
+.multiple-em-rit-menu {
+    margin-left: 0.5em;
+}
+
+
 #repeating_forms_table_parent .multiple-em-checkbox-wrapper {
     margin-left: -3px;
 }
+.multiple-em-egt-toolbar,
 .multiple-em-rit-toolbar {
     margin: 5px 0 0 5px;
 }
-.multiple-em-rit-toolbar .btn-toolbar-text {
-    font-size: 0.9em;
+.multiple-em-egt-toolbar {
+    margin-bottom: 7px;
 }
-.multiple-em-toolbar-button {
-    margin-left: 0.5em;
+.multiple-em-egt-toolbar .btn-toolbar-text,
+.multiple-em-rit-toolbar .btn-toolbar-text {
+    font-size: 0.85rem;
+}
+.multiple-em-rit-toolbar-button,
+.multiple-em-egt-toolbar-button {
+    margin-left: 0.5rem;
 }
 .multiple-em-toolbar-link {
     color: var(--dark);
@@ -71,6 +82,12 @@ table.dataTable thead th.multiple-em-checkbox-col {
     color: red;
 }
 
+/* Event Grid Table */
+.multiple-em-egt-col {
+    padding: 0 !important;
+}
+
+/* Buttons */
 .multiple-em-btn-success {
     background-color: green !important;
 }

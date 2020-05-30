@@ -33,11 +33,17 @@ class MultipleEM_ClearSelectionAjax
                 case "remove-all-records":
                     $module->clearRecords();
                     break;
+                case "update-forms":
+                    $module->updateForms($update["record"], $update["diff"]);
+                    break;
+                case "remove-all-forms":
+                    $module->clearAllForms($update["record"]);
+                    break;
                 case "update-instances":
-                    $module->updateInstances($update["record"], $update["event"], $update["form"], $update["diff"]);
+                    $module->updateInstances($update["record"], $update["diffs"]);
                     break;
                 case "remove-all-instances":
-                    $module->clearInstances($update["record"], $update["event"], $update["form"]);
+                    $module->clearAllInstances($update["record"]);
                     break;
                 case "delete-record-instances":
                     $module->deleteRecordInstances($update["record"]);
