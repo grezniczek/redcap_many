@@ -176,15 +176,15 @@ function toggleRecordStatusDashboardCheckBoxes() {
                 .append($('<a href="javascript:;"></a>')
                     .on('click', applyDashboardRecordSelection)
                     .text(DTO.rsd.apply))
-                .append('&nbsp; | &nbsp;')
+                .append(' | ')
                 .append($('<a href="javascript:;"></a>')
-                    .on('click', restoreDashboardRecordSelection)
-                    .text(DTO.rsd.restore))
-                .append('&nbsp; | &nbsp;')
+                    .on('click', resetDashboardRecordSelection)
+                    .text(DTO.rsd.reset))
+                .append(' | ')
                 .append($('<a href="javascript:;"></a>')
                     .on('click', addAllDashboardRecords)
                     .text(DTO.rsd.addAll))
-                .append('&nbsp; | &nbsp;')
+                .append(' | ')
                 .append($('<a href="javascript:;"></a>')
                     .on('click', removeAllDashboardRecords)
                     .text(DTO.rsd.removeAll))
@@ -1052,7 +1052,7 @@ function applyDashboardRecordSelection() {
 /**
  * Restores the dashboard checkbox state to reflect the Record Selection
  */
-function restoreDashboardRecordSelection() {
+function resetDashboardRecordSelection() {
     updateRecordStatusDashboardSelection()
 }
 

@@ -32,6 +32,10 @@
     margin: auto;
     text-align: center;
 }
+#event_grid_table .multiple-em-checkbox-wrapper {
+    bottom: unset;
+    top: 5px;
+}
 table.dataTable thead th.multiple-em-checkbox-col {
     padding: 0;
     margin: 0;
@@ -40,6 +44,7 @@ table.dataTable thead th.multiple-em-checkbox-col {
     position: relative;
     width: 30px;
     padding: 0;
+    vertical-align: top;
 }
 
 

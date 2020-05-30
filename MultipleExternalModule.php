@@ -72,6 +72,10 @@ class MultipleExternalModule extends AbstractExternalModule
 
         }
     }
+ 
+    function redcap_data_entry_form($project_id, $record, $instrument, $event_id, $group_id , $repeat_instance = 1) {
+
+    }
 
     function redcap_every_page_top($project_id)
     {
@@ -106,7 +110,7 @@ class MultipleExternalModule extends AbstractExternalModule
             "init" => strpos(PAGE, "DataEntry/record_status_dashboard.php") !== false,
             "activate" => $this->getProjectSetting("rsd-active") === true,
             "apply" => "Apply", // tt-fy
-            "restore" => "Restore", // tt-fy
+            "reset" => "Reset", // tt-fy
             "addAll" => "Add all", // tt-fy
             "removeAll" => "Remove all", // tt-fy
         );

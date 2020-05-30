@@ -5,6 +5,7 @@ use \User as REDCap_User;
 use \UserRights as REDCap_UserRights;
 use \Exception;
 use \ExternalModules\Framework;
+use \ExternalModules\ExternalModules;
 
 class Project
 {
@@ -37,7 +38,7 @@ class Project
             throw new \Exception("Must provide a Framework instance.");
         }
         $this->framework = $framework;
-        $this->project_id = $framework->requireInteger($project_id);
+        $this->project_id = ExternalModules::requireInteger($project_id);
         // Get REDCap's Project instance.
         if (isset($GLOBALS["Proj"]) && $GLOBALS["Proj"]->project_id === $this->project_id) {
             $this->proj = $GLOBALS["Proj"];

@@ -39,7 +39,7 @@
  *  init: boolean
  *  activate: boolean
  *  apply: string
- *  restore: string
+ *  reset: string
  *  addAll: string
  *  removeAll: string
  * }}
