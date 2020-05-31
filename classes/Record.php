@@ -208,10 +208,17 @@ class Record
         }
         // Check instances
         $instances = $this->requireInstances($instances);
+
+        // Prepare some data
+        $project_id = $this->project->getProjectId();
+        $now = empty(NOW) ? date("Y-m-d H:i:s") : NOW;
         
         // Perform deletion - there is a LOT to consider.
-        $project_id = $this->project->getProjectId();
 
+        $fileuploads = $this->project->hasFormFileUploadOrSignatureFields($form);
+
+
+        $a = "b";
 
         // Code from DataEntry/index.php
             // DELETE ALL DATA ON SINGLE FORM ONLY
@@ -391,6 +398,8 @@ class Record
 
         // Lock instances
         $project_id = $this->project->getProjectId();
+        $now = $this->now();
+        $user_id = $this->userId();
         $lock_success = array();
         $lock_fail = array();
         foreach($instances_to_lock as $instance) {
@@ -402,8 +411,8 @@ class Record
                 $this->record_id,
                 $event_id,
                 $form,
-                USERID,
-                NOW,
+                $user_id,
+                $now,
                 $instance
             ]);
             if ($result === true) $lock_success[] = $instance; else $lock_fail[] = $instance;
@@ -415,7 +424,7 @@ class Record
         }
         if (count($lock_success)) {
             $log_entry = str_replace("#INST#", join(", ", $lock_success), $log_entry);
-            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", "", $project_id, true, $event_id, null, true);
+            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", $user_id, $project_id, true, $event_id, null, true);
         }
     }
 
@@ -478,7 +487,7 @@ class Record
         }
         if (count($unlock_success)) {
             $log_entry= str_replace("#INST#", join(", ", $unlock_success), $log_entry);
-            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", "", $project_id, true, $event_id, null, true);
+            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", $this->userId(), $project_id, true, $event_id, null, true);
         }
     }
 
@@ -519,7 +528,7 @@ class Record
             ]);
             if ($result === true) {
                 // Update log
-                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, str_replace("#INST#", $instance, $log_entry), "Negate e-signature", "", "", $project_id, true, $event_id, null, false);
+                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, str_replace("#INST#", $instance, $log_entry), "Negate e-signature", "", $this->userId(), $project_id, true, $event_id, null, false);
             }
         }
     }
@@ -793,6 +802,25 @@ class Record
 
 
     #region -- Private Helpers ----------------------------------------------------------------
+
+    /**
+     * Gets the current date and time (Y-m-d H:i:s).
+     * @return string
+     */
+    private function now() {
+        return empty(NOW) ? date("Y-m-d H:i:s") : NOW;
+    }
+
+    /**
+     * Gets the user set in the parent project, or the current user.
+     * In case no user is set, "<UNKOWNN>" is returned.
+     * @return string
+     */
+    private function userId() {
+        $user_id = $this->project->getPermissionsUser();
+        if (empty($user_id)) $user_id = USERID;
+        return empty($user_id) ? "<UNKNOWN>" : $user_id;
+    }
 
     /**
      * Requires a valid event.

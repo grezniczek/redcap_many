@@ -377,6 +377,21 @@ class Project
         return null;
     }
 
+    /**
+     * Checks whether the give form includes a file upload or signature field.
+     * @param string $form The unique form name
+     * @return boolean
+     */
+    public function hasFormFileUploadOrSignatureFields($form) {
+        $fields = $this->getFieldsByForm($form);
+        foreach ($fields as $field) {
+            if ($this->proj->metadata[$field]["element_type"] == "file") {
+                return true;
+            }
+        }
+        return false;
+    }
+
     #endregion
 
 
@@ -389,6 +404,23 @@ class Project
      */
     public function hasField($field) {
         return array_key_exists($field, $this->proj->metadata);
+    }
+
+
+    /**
+     * Gets a list of field names of a form. Returns an empty array if the form does not exist.
+     * @param string $form The unique form name
+     * @return array<string>
+     */
+    public function getFieldsByForm($form) {
+        return $this->hasForm($form) ? array_keys($this->proj->forms[$form]["fields"]) : array();
+    }
+
+    /**
+     * Checks whether the project contains any file upload fields.
+     */
+    public function hasFileUploadFields() {
+        return $this->proj->hasFileUploadFields;
     }
 
     /**
