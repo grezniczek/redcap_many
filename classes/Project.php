@@ -47,6 +47,7 @@ class Project
             $this->proj = new REDCap_Project($project_id);
         }
         $this->proj->getUniqueEventNames();
+        // Set permissions based on the current user. Let the module override as necessary.
         $this->grantUserPermissions(USERID);
     }
 
@@ -110,8 +111,6 @@ class Project
     }
 
     #endregion
-
-
 
 
     #region -- Events ----------------------------------------------------------------
