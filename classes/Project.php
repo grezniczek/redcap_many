@@ -252,6 +252,15 @@ class Project
 
     #region -- Forms -----------------------------------------------------------------
 
+    /** 
+     * Gets the form with the record id field (i.e. the first form).
+     * @return string
+     */
+    public function getRecordIdForm() {
+        $record_id_field = $this->getRecordIdField();
+        return $this->getFormByField($record_id_field);
+    }
+
     /**
      * Gets a list of all forms in the project.
      * @return array<string>
@@ -392,6 +401,23 @@ class Project
         return false;
     }
 
+    /**
+     * Gets a list of file upload and signature fields on the form.
+     * @param string $form The unique form name
+     * @return array<string>
+     */
+    public function getFormFileUploadAndSignatureFields($form) {
+        $fields = $this->getFieldsByForm($form);
+        $fileOrSig = array();
+        foreach ($fields as $field) {
+            if ($this->proj->metadata[$field]["element_type"] == "file") {
+                array_push($fileOrSig, $field);
+            }
+        }
+        return $fileOrSig;
+    }
+
+
     #endregion
 
 
@@ -409,11 +435,19 @@ class Project
 
     /**
      * Gets a list of field names of a form. Returns an empty array if the form does not exist.
+     * Note: The record id field is NEVER returned from this. Use the getRecordIdForm() method.
      * @param string $form The unique form name
      * @return array<string>
      */
     public function getFieldsByForm($form) {
-        return $this->hasForm($form) ? array_keys($this->proj->forms[$form]["fields"]) : array();
+        if ($this->hasForm($form)) {
+            $record_id_field = $this->getRecordIdField();
+            $filter = function($field) use ($record_id_field) {
+                return $field != $record_id_field;
+            };
+            return array_filter(array_keys($this->proj->forms[$form]["fields"]), $filter);
+        }
+        return array();
     }
 
     /**
@@ -468,7 +502,154 @@ class Project
         return null;
     }
 
+    /**
+     * Checks whether a field is of type checkbox.
+     * If the field does not exists, null is returned.
+     * @param string $field The field name
+     * @return boolean|null
+     */
+    public function isFieldOfTypeCheckbox($field) {
+        if ($this->hasField($field)) {
+            return $this->proj->metadata[$field]["element_type"] == "checkbox";
+        }
+        return null;
+    }
 
+    /**
+     * Checks whether a field is of type radio.
+     * If the field does not exists, null is returned.
+     * @param string $field The field name
+     * @return boolean|null
+     */
+    public function isFieldOfTypeRadio($field) {
+        if ($this->hasField($field)) {
+            return $this->proj->metadata[$field]["element_type"] == "radio";
+        }
+        return null;
+    }
+
+    /**
+     * Checks whether a field is of type checkbox.
+     * If the field does not exists, null is returned.
+     * @param string $field The field name
+     * @return boolean|null
+     */
+    public function isFieldOfTypeDropdown($field) {
+        if ($this->hasField($field)) {
+            return $this->proj->metadata[$field]["element_type"] == "select";
+        }
+        return null;
+    }
+
+    /**
+     * Gets the enum of a checkbox, radio, or dropdown field.
+     * @param string $field The field name
+     */
+    public function getFieldEnum($field) {
+        if (in_array($this->getFieldType($field), ["dropdown", "radio", "checkbox"])) {
+            return parseEnum($this->proj->metadata[$field]["element_enum"]);
+        }
+    }
+
+    /**
+     * Gets the type of a field. If the field does not exist, NULL is returned.
+     * Field types are:
+     *  - text = Text Box without validation
+     *  - notes = Notes Box [textarea]
+     *  - calc = Calculated Field
+     *  - dropdown = Multiple Choice - Drop-down List (Single Answer) [select]
+     *  - radio = Multiple Choice - Radio Buttons (Single Answer)
+     *  - checkbox = Checkboxes (Multiple Answers)
+     *  - yesno = Yes / No
+     *  - truefalse = True / False
+     *  - file = File Upload (for users to upload files) [file]
+     *  - signature = Signature (draw signature with mouse or finger) [file]
+     *  - slider = Slider / Visual Analog Scale
+     *  - descriptive = Descriptive Text (with optional Image/Video/Audio/File Attachment)
+     *  - date = Text Box with date validation
+     *  - datetime = Text Box with datetime validation, with or without seconds
+     *  - email = Text Box with email validation
+     *  - int = Text Box with integer validation
+     *  - float = Text Bow with number validation (or number with comma, any number of digits)
+     *  - time_hm = Time (HH:MM)
+     *  - time_ms = Time (MM:SS)
+     *  - other = Textbox with custom/other validation - use getFieldValidation()
+     * 
+     * @param string $field The field name
+     * @return string|null
+     */
+    public function getFieldType($field) {
+        if (!$this->hasField($field)) return null;
+
+        $type = $this->proj->metadata[$field]["element_type"];
+        switch ($type) {
+            case "text":
+                switch ($this->proj->metadata[$field]["element_validation_type"]) {
+                    case "date_ymd":
+                    case "date_dmy":
+                    case "date_mdy": 
+                        return "date";
+                    case "datetime_ymd":
+                    case "datetime_dmy":
+                    case "datetime_mdy": 
+                        return "date";
+                    case "datetime_seconds_ymd":
+                    case "datetime_seconds_dmy":
+                    case "datetime_seconds_mdy": 
+                        return "date";
+                    case "email":
+                        return "email";
+                    case "int":
+                        return "int";
+                    case "float":
+                    case "number_1dp":
+                    case "number_2dp":
+                    case "number_3dp":
+                    case "number_4dp":
+                    case "number_comma_decimal":
+                    case "number_1dp_comma_decimal":
+                    case "number_2dp_comma_decimal":
+                    case "number_3dp_comma_decimal":
+                    case "number_4dp_comma_decimal":
+                        return "float";
+                    case "time":
+                        return "time_hm";
+                    case "time_mm_ss":
+                        return "time_ms";
+                }
+                return "other";
+            case "textarea":
+                return "notes";
+            case "select":
+                return "dropdown";
+            case "file": {
+                    $validation = $this->proj->metadata[$field]["element_validation_type"] == "signature";
+                    return $validation == "signature" ? "signature" : "file";
+                }
+            case "calc":
+            case "radio":
+            case "checkbox":
+            case "yesno":
+            case "truefalse":
+            case "slider":
+            case "descriptive":
+                return $type;
+        }
+        return "other";
+    }
+
+    /**
+     * Gets the field validation of a text box field.
+     * If the field does not exist, null is returned.
+     * @param string $field The field name
+     * @return string|null
+     */
+    function getFieldValidation($field) {
+        if ($this->hasField($field) && $this->proj->metadata[$field]["element_type"] == "text") {
+            return $this->proj->metadata[$field]["element_validation_type"];
+        }
+        return null;
+    }
 
     #endregion
 
@@ -619,35 +800,7 @@ class Project
         return null;
     }
 
-    /**
-     * Gets the field type.
-     * If the field does not exist, null is returned.
-     * 
-     * @param string $field The field name.
-     * @return string 
-     */
-    function getFieldType($field) {
-        $metadata = $this->getFieldMetadata($field);
-        if ($metadata) {
-            return $metadata["element_type"];
-        }
-        return null;
-    }
 
-    /**
-     * Gets the field validation.
-     * If the field does not exist, null is returned.
-     * 
-     * @param string $field The field name.
-     * @return string 
-     */
-    function getFieldValidation($field) {
-        $metadata = $this->getFieldMetadata($field);
-        if ($metadata) {
-            return $metadata["element_validation_type"];
-        }
-        return null;
-    }
 
     /**
      * Gets the repeating forms and events in the current or specified project.

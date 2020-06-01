@@ -91,10 +91,12 @@
  *  activate: boolean
  *  rit: Object<string, number[]>
  *  fei: string[]
+ *  fei_nodata: string[]
+ *  nrf: string[] 
  *  viewPresets: InstanceFieldPreset[]
  *  updatePresets: InstanceFieldPreset[],
- *  deleteConfirmTitle: string
- *  deleteConfirmText: string
+ *  deleteFormsConfirmTitle: string
+ *  deleteFormsConfirmText: string
  * }}
  */
 
@@ -105,7 +107,7 @@
  *  record_selected: boolean
  *  $addRemoveLink: JQuery
  *  ritVisible: Object<string, boolean>
- *  egtVisible: boolean
+ *  visible: boolean
  * }}
  */
 
@@ -137,7 +139,11 @@
 
 
 /**
- * @typedef InstancesDiff
+ * @typedef feiDiff
+ * @type {Object<string, Object<number, boolean>>}
+ */
+/**
+ * @typedef ritDiff
  * @type {Object<string, Object<string, boolean>>}
  */
 
@@ -148,5 +154,35 @@
 
 /**
  * @typedef FormDiff
- * @type {Object<string, Object<number, boolean>>}
+ * @type {Object<string, Object>}
  */
+
+/**
+ * @typedef ModalConfig
+ * @type {{
+ *  template: JQuery|string
+ *  title?: string
+ *  body?: string
+ *  buttons?: ModalButton[]
+ * }}
+ */
+
+/**
+ * @typedef ModalButton
+ * @type {{
+ *  label: string
+ *  action?: string
+ *  addClass?: string[]
+ * }}
+ */
+
+/**
+ * @typedef ModalResult
+ * @type {{
+ *  action: string
+ *  values: Object
+ * }}
+ */
+ 
+
+ 

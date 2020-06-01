@@ -27,23 +27,24 @@ class MultipleEM_ClearSelectionAjax
                 throw new \Exception("Invalid payload received.");
             }
             switch ($update["command"]) {
+                // Records - Record Status Dashboard actions
                 case "update-records":
                     $module->updateRecords($update["diff"]);
                     break;
                 case "remove-all-records":
                     $module->clearRecords();
                     break;
-                case "update-forms":
-                    $module->updateForms($update["record"], $update["diff"]);
+                // Forms - Record Home Page actions (single record)
+                case "update-record-forms":
+                    $module->updateForms($update["record"], $update["diff"]["fei"]);
+                    $module->updateInstances($update["record"], $update["diff"]["rit"]);
                     break;
-                case "remove-all-forms":
+                case "remove-record-all-forms":
                     $module->clearAllForms($update["record"]);
-                    break;
-                case "update-instances":
-                    $module->updateInstances($update["record"], $update["diffs"]);
-                    break;
-                case "remove-all-instances":
                     $module->clearAllInstances($update["record"]);
+                    break;
+                case "delete-record-forms":
+                    $module->deleteRecordForms($update["record"]);
                     break;
                 case "delete-record-instances":
                     $module->deleteRecordInstances($update["record"]);

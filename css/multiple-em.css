@@ -49,35 +49,38 @@ table.dataTable thead th.multiple-em-checkbox-col {
 
 
 /* Record Home Page */
-.multiple-em-rit {
+.multiple-em-rhp {
     white-space: nowrap;
     font-weight: normal;
 }
 .multiple-em-rit-instance-count {
     font-weight: normal;
-    margin-left: 0.5em;
+}
+.multiple-em-rit {
+    display: inline-block;
+    font-weight: normal;
+    font-size: 11px;
+    white-space: nowrap;
 }
 .multiple-em-rit-menu {
     margin-left: 0.5em;
+}
+.multiple-em-rit-menu a {
+    font-size: 11px;
 }
 
 
 #repeating_forms_table_parent .multiple-em-checkbox-wrapper {
     margin-left: -3px;
 }
-.multiple-em-egt-toolbar,
-.multiple-em-rit-toolbar {
+.multiple-em-rhp-toolbar {
     margin: 5px 0 0 5px;
-}
-.multiple-em-egt-toolbar {
     margin-bottom: 7px;
 }
-.multiple-em-egt-toolbar .btn-toolbar-text,
-.multiple-em-rit-toolbar .btn-toolbar-text {
+.multiple-em-rhp-toolbar .btn-toolbar-text {
     font-size: 0.85rem;
 }
-.multiple-em-rit-toolbar-button,
-.multiple-em-egt-toolbar-button {
+.multiple-em-rhp-toolbar-button {
     margin-left: 0.5rem;
 }
 .multiple-em-toolbar-link {

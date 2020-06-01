@@ -4,6 +4,7 @@ use Exception;
 use \REDCap;
 use \Logging as REDCap_Logging;
 use \UserRights as REDCap_UserRights;
+use \ExternalModules\StatementResult;
 
 class Record
 {
@@ -92,6 +93,56 @@ class Record
         else {
             return null;
         }
+    }
+
+
+    /**
+     * Gets the form status for the specified form(s) or all forms for the specified event. The return value is an associative array:
+     * [ 
+     *   form_name => [ instance => status, ... ]
+     *   ...
+     * ]
+     * Status is null|0|1|2 (gray/unsaved, red/incomplete, yellow/unverified, green/complete)
+     * Instance will be 1 for non-repeating forms/events.
+     * 
+     * @param array<string>|string|null $forms A form name (or list of form names; use NULL for all forms)
+     * @param string|int|null $event The unique event name or (numerical) event id (can be omitted for non-longitudinal projects)
+     * @return array<string,array<number,string>
+     */
+    public function getFormStatus($forms, $event = null) {
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        if ($forms === null) $forms = $this->project->getFormsByEvent($event_id);
+        if (!is_array($forms)) $forms = array($forms);
+        $forms = $this->requireFormEvent($forms, $event_id);
+        // Prepare return value
+        $forms_status = array();
+        foreach ($forms as $form) {
+            $forms_status[$form] = array();
+        }
+        $q = $this->framework->createQuery();
+        $q->add("SELECT `value`, `field_name`, `instance` FROM redcap_data WHERE `project_id` = ? AND `record` = ? AND event_id = ? AND", [
+            $this->project->getProjectId(), $this->record_id, $event_id
+        ]);
+        $add_complete = function($form_name) { 
+            return $form_name . "_complete"; 
+        };
+        $q->addInClause("`field_name`", array_map($add_complete, $forms));
+        $sql = $q->getSQL();
+        $result = $this->toStatementResult($q->execute());
+        while ($row = $result->fetch_assoc()) {
+            $form = substr($row["field_name"], 0, strlen($row["field_name"]) - 9); // Remove "_complete" from end only!
+            $instance = $row["instance"] === null ? 1 : $row["instance"] * 1;
+            $value = ($row["value"] === "" || $row["value"] === null) ? null : $row["value"];
+            $forms_status[$form][$instance] = $value;
+        }
+        // Add in repeating status (first instance = null if none are present)
+        foreach ($forms_status as $form => &$instance_status) {
+            if (empty($instance_status)) {
+                $instance_status = array( 1 => null );
+            }
+        }
+        return $forms_status;
     }
 
     #endregion
@@ -203,19 +254,82 @@ class Record
         if ($form_repeating && $instances === null) {
             throw new Exception("Must specify instances for repeating form '{$form}' on event {$event_id}.");
         }
-        if (!$form_repeating && $instances !== null) {
-            throw new Exception("Form {'$form'} must be repeating on event {$event_id} when specfying a value other than NULL as the instances parameter.");
+        $event_repeating = $this->project->isEventRepeating($event_id);
+        if ($event_repeating && $instances === null) {
+            throw new Exception("Must specify instances for repeating event {$event_id}.");
         }
-        // Check instances
+        $repeating = $form_repeating || $event_repeating;
+        if (!$repeating && $instances !== null) {
+            throw new Exception("Form {'$form'} must be repeating on event {$event_id} or the event must be repeating when instances is not NULL.");
+        }
+        // Check instances, if none
         $instances = $this->requireInstances($instances);
+        // Add instance 1 for non-repeating
+        if (!$repeating && count($instances) == 0) $instances = array ( 1 );
 
         // Prepare some data
         $project_id = $this->project->getProjectId();
         $now = empty(NOW) ? date("Y-m-d H:i:s") : NOW;
         
-        // Perform deletion - there is a LOT to consider.
+        // Perform deletion - there is a LOT to consider
+        // Get list of all fields with data
+        $fields = $this->project->getFieldsByForm($form); // Note - this will never include the record id field!
+        $data = $this->getFieldValues($fields, $event_id, $instances);
+        // Are there any file upload or signature fields? If so, the corresponding files must be marked for deletion.
+        $fileOrSigFields = $this->project->getFormFileUploadAndSignatureFields($form);
+        // Delete any files
+        if (count($fileOrSigFields)) {
+            foreach ($fileOrSigFields as $field) {
+                foreach ($data[$field] as $_ => $edoc_id) {
+                    if (!empty($edoc_id)) {
+                        $this->deleteFile($edoc_id);
+                    }
+                }
+            }
+        }
+        // Loop through all instances, delete data, and log (setting fields with data to their empty default values)
+        foreach ($instances as $instance) {
+            // Delete all responses from data table for this form
+            $deleteQuery = $this->framework->createQuery();
+            $deleteQuery->add("DELETE FROM redcap_data WHERE `project_id` = ? AND `event_id` = ? AND `record` = ? AND", [
+                $project_id, $event_id, $this->record_id
+            ]);
+            $deleteQuery->addInClause("`field_name`", $fields);
+            if ($repeating) {
+                $deleteQuery->add("AND `instance` = ?", [$instance]);
+            }
+//            $result = self::toStatementResult($deleteQuery->execute());
+            $deleteSql = $deleteQuery->getSQL();
+            
+            $formsStatus = $this->getFormStatus($form, $event_id);
 
-        $fileuploads = $this->project->hasFormFileUploadOrSignatureFields($form);
+
+
+
+
+            // Logging
+            $logging = array();
+            foreach ($fields as $field) {
+                if (!empty($data[$field][$instance])) {
+                    // Logging: Add default data values to logging field list
+                    if ($this->project->isFieldOfTypeCheckbox($field)) {
+                        foreach (array_keys($this->project->getFieldEnum($field)) as $code) {
+                            $logging[] = "$field($code) = unchecked";
+                        }
+                    } 
+                    else {
+                        $logging[] = "$field = ''";
+                    }
+                }
+            }
+            // Log the data change
+            $log_sql = "-- Deleted by EM Framework API"; // What to log for sql?? Make up some fake statements that would have the same effect?
+            $log_desc = "Delete all record data for single form"; // DO NOT CHANGE - REDCap relies on this for data history!
+            $log_reason = $form_repeating ? "[instance = $instance]" : ""; // REDCap Bug: Instance number is not logged for form deletions!
+            REDCap_Logging::logEvent($log_sql, "redcap_data", "UPDATE", $this->record_id, join(",\n", $logging), $log_desc, $log_reason, $this->project->getPermissionsUser(), $project_id, $now, $event_id, $instance);
+        }
+
+
 
 
         $a = "b";
@@ -225,35 +339,6 @@ class Record
 
             // elseif ($user_rights['record_delete'] && $_POST['submit-action'] == "submit-btn-deleteform")
             // {
-            //     // Set any File Upload fields as deleted in the edocs table
-            //     if ($Proj->hasFileUploadFields) {
-            //         $sql = "update redcap_metadata m, redcap_data d, redcap_edocs_metadata e
-            //                 set e.delete_date = '".NOW."' where m.project_id = $project_id
-            //                 and m.project_id = d.project_id and e.project_id = m.project_id and m.element_type = 'file'
-            //                 and d.field_name = m.field_name and d.value = e.doc_id and m.form_name = '".db_escape($_GET['page'])."'
-            //                 and d.event_id = {$_GET['event_id']} and d.record = '".db_escape($fetched.$entry_num)."'" .
-            //                 ($Proj->hasRepeatingFormsEvents() ? " AND d.instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
-            //         db_query($sql);
-            //     }
-            //     // Get list of all fields with data for this record on this form
-            //     $sql = "select distinct field_name from redcap_data where project_id = $project_id
-            //             and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
-            //             and field_name in (" . prep_implode(array_keys($Proj->forms[$_GET['page']]['fields'])) . ") and field_name != '$table_pk'" .
-            //             ($Proj->hasRepeatingFormsEvents() ? " AND instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
-            //     $q = db_query($sql);
-            //     $eraseFields = $eraseFieldsLogging = array();
-            //     while ($row = db_fetch_assoc($q)) {
-            //         // Add to field list
-            //         $eraseFields[] = $row['field_name'];
-            //         // Add default data values to logging field list
-            //         if ($Proj->isCheckbox($row['field_name'])) {
-            //             foreach (array_keys(parseEnum($Proj->metadata[$row['field_name']]['element_enum'])) as $this_code) {
-            //                 $eraseFieldsLogging[] = "{$row['field_name']}($this_code) = unchecked";
-            //             }
-            //         } else {
-            //             $eraseFieldsLogging[] = "{$row['field_name']} = ''";
-            //         }
-            //     }
             //     // Delete all responses from data table for this form (do not delete actual record name - will keep same record name)
             //     $sql = "delete from redcap_data where project_id = $project_id
             //             and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
@@ -331,6 +416,17 @@ class Record
 
 
 
+    }
+
+    /**
+     * Deletes a file (marks it for deletion)
+     * @param int $edoc_id The document ID
+     */
+    public function deleteFile($edoc_id) {
+        $edoc_id = $this->requireInt($edoc_id);
+        $sql = "UPDATE redcap_edocs_metadata SET `delete_date` = ? WHERE `doc_id` = ? AND `project_id` = ?";
+        $params = array($this->now(), $edoc_id, $this->project->getProjectId());
+        $this->framework->query($sql, $params);
     }
 
     #endregion
@@ -804,6 +900,15 @@ class Record
     #region -- Private Helpers ----------------------------------------------------------------
 
     /**
+     * Returns a query result as a StatementResult (for better IDE support).
+     * @param mixed $result
+     * @return StatementResult
+     */
+    private static function toStatementResult($result) {
+        return $result;
+    }
+
+    /**
      * Gets the current date and time (Y-m-d H:i:s).
      * @return string
      */
@@ -823,6 +928,20 @@ class Record
     }
 
     /**
+     * Ensures that val is an integer that is greater than or equal to min (defaults to 1).
+     * @param mixed $val
+     * @param int $min
+     * @return int
+     * @throws Exception $val is not an int
+     */
+    private function requireInt($val, $min = 1) {
+        if (is_numeric($val) && is_int($val * 1) && ($val * 1) >= $min) {
+            return $val * 1;
+        }
+        throw new Exception("'$val' does not fulfill the requirement 'integer >= $min'.");
+    }
+
+    /**
      * Requires a valid event.
      * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
      * @return int
@@ -837,16 +956,20 @@ class Record
     }
 
     /**
-     * Requires a from to be on the given event.
-     * @param string $form The unique instrument name
+     * Requires a from (or several forms) to be on the given event.
+     * @param string|array<string> $forms The unique instrument name(s)
      * @param int $event_id The (numerical) event id
-     * @return string The unique instrument name
+     * @return string|array<string> The unique instrument name(s)
      */
-    private function requireFormEvent($form, $event_id) {
-        if (!$this->project->isFormOnEvent($form, $event_id)) {
-            throw new Exception("Form '{$form}' is not on event '{$event_id}'.");
+    private function requireFormEvent($forms, $event_id) {
+        $array = is_array($forms);
+        if (!$array) $forms = array($forms);
+        foreach ($forms as $form) {
+            if (!$this->project->isFormOnEvent($form, $event_id)) {
+                throw new Exception("Form '{$form}' is not on event '{$event_id}'.");
+            }
         }
-        return $form;
+        return $array ? $forms : $form[0];
     }
 
     /**
@@ -874,7 +997,7 @@ class Record
      * 
      * @param array $fields A list of field names.
      * @param string $event The event name of (numerical) event id.
-     * @param [int] $instances The repeat instance (optional).
+     * @param array<int> $instances The repeat instance (optional).
      * @return int|null The mode - one of REPEAT_EVENT, REPEAT_FORM, NON_REPEATING, or null if there is nothing to do.
      * @throws Excetion in case of violations.
      */
@@ -892,7 +1015,7 @@ class Record
             $max_instance = max($max_instance, $instance);
             $min_instance = min($min_instance, $instance);
         }
-        if ($max_instance == 0) {
+        if (count($instances) && $max_instance == 0) {
             throw new \Exception("Invalid instances.");
         }
         // Check event.

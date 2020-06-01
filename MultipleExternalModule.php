@@ -123,8 +123,8 @@ class MultipleExternalModule extends AbstractExternalModule
             "fei" => array(),
             "viewPresets" => array(),
             "updatePresets" => array(),
-            "deleteConfirmTitle" => $this->tt("modal_delete_instances_title"),
-            "deleteConfirmText" => $this->tt("modal_delete_instances_text"),
+            "deleteFormsConfirmTitle" => $this->tt("modal_delete_forms_title"),
+            "deleteFormsConfirmText" => $this->tt("modal_delete_forms_text"),
         );
         // Do we have a record?
         if (strpos(PAGE, "DataEntry/record_home.php") !== false) {
@@ -139,17 +139,44 @@ class MultipleExternalModule extends AbstractExternalModule
                 if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
                 /** @var \DE\RUB\Utility\Project */
                 $project = Project::get($this->framework, $project_id);
+                $record = $project->getRecord($record_id);
                 // Repeating forms
                 $repeating = $project->getEventsForms(false, true);
                 $dto_rhp["rit"] = array();
-                foreach ($repeating as $event_id => $forms) {
-                    foreach ($forms as $form => $_) {
-                        $rit_key = "repeat_instrument_table-{$event_id}-{$form}";
-                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $event_id, $form);
+                foreach ($repeating as $this_event_id => $this_forms) {
+                    foreach ($this_forms as $form => $_) {
+                        $rit_key = "repeat_instrument_table-{$this_event_id}-{$form}";
+                        $dto_rhp["rit"][$rit_key] = $this->loadSelectedInstances($project_id, $record_id, $this_event_id, $form);
                     }
                 }
                 // Non-repeating forms
-                $dto_rhp["fei"] = $this->loadSelectedForms($project_id, $record_id);
+                $dto_rhp["nrf"] = array_keys($project->getFormsEvents(false, false));
+                // Get all event grid table forms that have a gray status (i.e. never saved)
+                // fei = form_name-event_id-instance
+                $fei_nodata = array();
+                $events = $project->getEvents();
+                foreach ($events as $this_event_id) {
+                    $event_repeating = $project->isEventRepeating($this_event_id);
+                    $gray_forms = $record->getFormStatus(null, $this_event_id);
+                    foreach ($gray_forms as $this_form => $this_instancestatus) {
+                        if ($project->isFormRepeating($this_form)) continue;
+                        foreach ($this_instancestatus as $this_instance => $this_status) {
+                            if ($this_status === null) {
+                                $fei_i = ($event_repeating && $this_instance != 1) ? $this_instance : "null";
+                                $fei_nodata[] = "{$this_form}-{$this_event_id}-{$fei_i}";
+                            }
+                        }
+                        
+                    }
+                }
+                $dto_rhp["fei_nodata"] = $fei_nodata;
+                $fei_selected_saved = $this->loadSelectedForms($project_id, $record_id);
+                $fei_selected = array_diff($fei_selected_saved, $fei_nodata);
+                if (count($fei_selected_saved) != count($fei_selected)) {
+                    // Re-save in case of discrepancy .. maybe because somebody has deleted a form concurrently
+                    $this->saveSelectedForms($project_id, $record_id, $fei_selected);
+                }
+                $dto_rhp["fei"] = $fei_selected;
                 $this->includeDeleteConfirmationModal();
             }
         }
@@ -190,6 +217,27 @@ class MultipleExternalModule extends AbstractExternalModule
     }
 
 
+
+    /**
+     * Deletes all currently selected non-repeating forms of the given record.
+     * @param string $record_id
+     */
+    function deleteRecordForms($record_id) {
+        $pid = $this->getProjectId();
+        $selected = $this->loadSelectedForms($pid, $record_id);
+        // [ "form_name-event_id-instance", ... ]
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        /** @var \DE\RUB\Utility\Project */
+        $project = Project::get($this->framework, $pid);
+        $record = $project->getRecord($record_id);
+        foreach ($selected as $fei) {
+            $parts = explode("-", $fei);
+            $form = $parts[0];
+            $event_id = $parts[1] * 1;
+            $instance = $parts[2] * 1;
+            $record->deleteFormInstances($form, $instance, $event_id);
+        }
+    }
 
 
     /**
@@ -397,7 +445,7 @@ class MultipleExternalModule extends AbstractExternalModule
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="multiple-em-delete-confirmation-model-staticBackdropLabel">Title</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="<?=$fw->tt("modal_close")?>">
+                        <button type="button" class="close" data-em-modal-action aria-label="<?=$fw->tt("modal_close")?>">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
@@ -405,8 +453,8 @@ class MultipleExternalModule extends AbstractExternalModule
                         ...
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?=$fw->tt("modal_cancel")?></button>
-                        <button type="button" class="btn btn-danger multiple-em-confirmed"><?=$fw->tt("modal_delete")?></button>
+                        <button type="button" class="btn btn-secondary" data-em-modal-action><?=$fw->tt("modal_cancel")?></button>
+                        <button type="button" class="btn btn-danger multiple-em-confirmed" data-em-modal-action="confirm"><?=$fw->tt("modal_delete")?></button>
                     </div>
                 </div>
             </div>
