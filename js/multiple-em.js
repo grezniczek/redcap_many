@@ -522,6 +522,9 @@ function clearRecordHomePageSelection(serverUpdate) {
     }
     multipleForms = {}
     multipleInstances = {}
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
+        multipleInstances[rit] = []
+    })
     resetRecordHomePageSelection()
     updateRecordHomePageToolbars()
 }
@@ -541,7 +544,7 @@ function updateRecordHomePageToolbars() {
     })
     // Count - Repeating Instruments
     var rits_count = 0
-    Object.keys(multipleInstances).forEach(function(rit) {
+    Object.keys(DTO.rhp.rit).forEach(function(rit) {
         var count = 0;
         Object.keys(multipleInstances[rit]).forEach(function(instance) {
             if (multipleInstances[rit][instance]) {
