@@ -35,25 +35,23 @@ class MultipleEM_ClearSelectionAjax
                     $module->clearRecords();
                     break;
                 // Forms - Record Home Page actions (single record)
-                case "update-record-forms":
+                case "update-record-forms-selection":
                     $module->updateForms($update["record"], $update["diff"]["fei"]);
                     $module->updateInstances($update["record"], $update["diff"]["rit"]);
                     break;
-                case "remove-record-all-forms":
+                case "clear-record-forms-selection":
                     $module->clearAllForms($update["record"]);
                     $module->clearAllInstances($update["record"]);
                     break;
                 case "delete-record-forms":
                     $module->deleteRecordForms($update["record"]);
-                    break;
-                case "delete-record-instances":
                     $module->deleteRecordInstances($update["record"]);
                     break;
-                case "lock-record-instances": 
-                    $module->setInstancesLockState($update["record"], true);
+                case "lock-record-forms": 
+                    $module->setFormsLockState($update["record"], true);
                     break;
-                case "unlock-record-instances": 
-                    $module->setInstancesLockState($update["record"], false);
+                case "unlock-record-forms": 
+                    $module->setFormsLockState($update["record"], false);
                     break;
             }
         }

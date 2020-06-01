@@ -518,7 +518,7 @@ function resetRecordHomePageSelection() {
  */
 function clearRecordHomePageSelection(serverUpdate) {
     if (serverUpdate) {
-        updateServerForms('remove-record-all-forms', null, null, null)
+        updateServerForms('clear-record-forms-selection', null, null, null)
     }
     multipleForms = {}
     multipleInstances = {}
@@ -637,7 +637,7 @@ function applyRecordHomePageSelection() {
         var done = function() {
             updateRecordHomePageToolbars()
         }
-        updateServerForms('update-record-forms', diff, done, done)
+        updateServerForms('update-record-forms-selection', diff, done, done)
     }
 }
 
@@ -762,42 +762,27 @@ function determineRecordState() {
 
 //#region ---- Locking / Unlocking / E-Signature -----------------------------------------
 
-function lockUnlockForms(e) {
-    log('Lock/Unlock Forms - not implemented yet.')
-}
-
-// /**
-//  * Lock or unlock the selected instances.
-//  * @param {JQueryEventObject} e 
-//  */
-// function lockUnlockInstances(e) {
-//     var $btn = $(e.target)
-//     var mode = $btn.attr('data-multiple-em-action')
-//     if (mode == 'lock-record-instances' || mode == 'unlock-record-instances') {
-//         log('Locking/Unlocking instances (' + mode + ').')
-//         // Disable toolbar
-//         $('.multiple-em-rit-toolbar button').prop('disabled', true)
-//         spinButton($btn)
-//         updateServerInstances(mode, null, 
-//             function() {
-//                 lockUnlockInstancesComplete($btn, null)
-//             }, 
-//             function(jqXHR) {
-//                 lockUnlockInstancesComplete($btn, jqXHR)
-//             })
-//     }
-// }
-
 /**
- * Unlock the selected instances.
- * @param {JQuery<Element>} $btn
- * @param {JQuery.jqXHR} jqXHR
+ * Lock or unlock the selected instances.
+ * @param {JQueryEventObject} e 
  */
-function lockUnlockInstancesComplete($btn, jqXHR) {
-    unspinButton($btn, jqXHR == null)
-    updateRecordHomePageToolbars()
-    // Reload page
-    if (jqXHR == null) setTimeout(function() { location.reload() }, 200)
+function lockUnlockForms(e) {
+    var $btn = $(e.target)
+    var mode = $btn.attr('data-multiple-em-action')
+    if (mode == 'lock-record-forms' || mode == 'unlock-record-forms') {
+        log('Locking/Unlocking instances (' + mode + ').')
+        disableRecordHomePageToolbarButtons(true)
+        spinButton($btn)
+        updateServerForms(mode, null, 
+            function() {
+                unspinButton($btn, true)
+                setTimeout(function() { location.reload() }, 200)
+            }, 
+            function(jqXHR) {
+                unspinButton($btn, false)
+                // TODO - Report error
+            })
+    }
 }
 
 //#endregion
@@ -838,7 +823,7 @@ function deleteForms() {
 //         title: DTO.rhp.deleteInstancesConfirmTitle,
 //         body: DTO.rhp.deleteInstancesConfirmText
 //     }).then(function(result) {
-//         updateServerInstances('delete-record-instances', null, 
+//         updateServerInstances('delete-record-forms', null, 
 //             function() {
 //                 // After successful deletion, reload the page
 //                 location.reload()

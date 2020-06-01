@@ -272,8 +272,12 @@ class MultipleExternalModule extends AbstractExternalModule
      * @param string $record_id
      * @param bool $locked
      */
-    function setInstancesLockState($record_id, $locked) {
+    function setFormsLockState($record_id, $locked) {
         $pid = $this->getProjectId();
+        /** @var \DE\RUB\Utility\Project */
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        $project = Project::get($this->framework, $pid);
+        $record = $project->getRecord($record_id);
         $selected = $this->loadSelectedInstances($pid, $record_id);
         // [
         //   event_id => [
@@ -283,10 +287,6 @@ class MultipleExternalModule extends AbstractExternalModule
         //     ]
         //   ]
         // ]
-        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        /** @var \DE\RUB\Utility\Project */
-        $project = Project::get($this->framework, $pid);
-        $record = $project->getRecord($record_id);
         foreach ($selected as $event_id => $forms) {
             foreach ($forms as $form => $instances) {
                 if ($locked) {
@@ -295,6 +295,20 @@ class MultipleExternalModule extends AbstractExternalModule
                 else {
                     $record->unlockFormInstances($form, $instances, $event_id);
                 }
+            }
+        }
+        $selected = $this->loadSelectedForms($pid, $record_id);
+        foreach ($selected as $fei) {
+            $parts = explode("-", $fei);
+            $form = $parts[0];
+            $event_id = $parts[1];
+            $instance = $parts[2];
+            if ($instance === "null") $instance = null;
+            if ($locked) {
+                $record->lockFormInstances($form, $instance, $event_id);
+            }
+            else {
+                $record->unlockFormInstances($form, $instance, $event_id);
             }
         }
     }
