@@ -777,13 +777,14 @@ function lockUnlockForms(e) {
         disableRecordHomePageToolbarButtons(true)
         spinButton($btn)
         updateServerForms(mode, null, 
-            function() {
+            function(data) {
                 unspinButton($btn, true)
                 setTimeout(function() { location.reload() }, 200)
             }, 
-            function(jqXHR) {
+            function(data) {
                 unspinButton($btn, false)
                 // TODO - Report error
+                updateRecordHomePageToolbars()
             })
     }
 }
@@ -1099,12 +1100,24 @@ function updateServerForms(cmd, diff, callbackDone, callbackFail) {
         dataType: 'json'
     })
     .done(function(data, textStatus, jqXHR) {
-        log('Ajax Success:', jqXHR)
-        if (callbackDone) callbackDone()
+        if (data.success) {
+            log('Ajax Success:', data)
+            if (callbackDone) callbackDone(data)
+        }
+        else {
+            log('Ajax Fail:', data)
+            if (callbackFail) callbackFail(data)
+        }
     })
     .fail(function(jqXHR, textStatus, errorThrown) {
-        log('Ajax Failure: ', jqXHR, textStatus, errorThrown)
-        if (callbackFail) callbackFail(jqXHR)
+        log('Ajax Error: ' + errorThrown, jqXHR, textStatus)
+        if (callbackFail) {
+            callbackFail({
+                success: false,
+                error: errorThrown,
+                jqXHR: jqXHR
+            })
+        }
     })
 }
 

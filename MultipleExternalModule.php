@@ -303,12 +303,12 @@ class MultipleExternalModule extends AbstractExternalModule
             $form = $parts[0];
             $event_id = $parts[1];
             $instance = $parts[2];
-            if ($instance === "null") $instance = null;
+            $instance = ($instance === "null") ? null : $instance * 1;
             if ($locked) {
-                $record->lockFormInstances($form, $instance, $event_id);
+                $record->lockForms($form, $event_id, $instance);
             }
             else {
-                $record->unlockFormInstances($form, $instance, $event_id);
+                $record->unlockForms($form, $event_id, $instance);
             }
         }
     }

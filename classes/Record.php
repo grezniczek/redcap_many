@@ -117,8 +117,27 @@ class Record
         $forms = $this->requireFormEvent($forms, $event_id);
         // Prepare return value
         $forms_status = array();
-        foreach ($forms as $form) {
-            $forms_status[$form] = array();
+        if ($this->project->isEventRepeating($event_id)) {
+            // Add in a gray status for all forms - overwrite with actual status later.
+            // This is necessary, as event instances can be all gray and would not be 
+            // detected in the query.
+            $event_instances = $this->getRepeatingEventInstances($event_id);
+            // As there will ALWAYS be the first instance of a repeating event,
+            // even when there is no data in the event, add instance 1 if it 
+            // doesn't exist.
+            if (!in_array(1, $event_instances, true)) {
+                array_unshift($event_instances, 1);
+            }
+            foreach ($event_instances as $event_instance) {
+                foreach ($forms as $form) {
+                    $forms_status[$form][$event_instance] = null;
+                }
+            }
+        }
+        else {
+            foreach ($forms as $form) {
+                $forms_status[$form] = array( 1 => null );
+            }
         }
         $q = $this->framework->createQuery();
         $q->add("SELECT `value`, `field_name`, `instance` FROM redcap_data WHERE `project_id` = ? AND `record` = ? AND event_id = ? AND", [
@@ -128,7 +147,6 @@ class Record
             return $form_name . "_complete"; 
         };
         $q->addInClause("`field_name`", array_map($add_complete, $forms));
-        $sql = $q->getSQL();
         $result = $this->toStatementResult($q->execute());
         while ($row = $result->fetch_assoc()) {
             $form = substr($row["field_name"], 0, strlen($row["field_name"]) - 9); // Remove "_complete" from end only!
@@ -136,17 +154,45 @@ class Record
             $value = ($row["value"] === "" || $row["value"] === null) ? null : $row["value"];
             $forms_status[$form][$instance] = $value;
         }
-        // Add in repeating status (first instance = null if none are present)
-        foreach ($forms_status as $form => &$instance_status) {
-            if (empty($instance_status)) {
-                $instance_status = array( 1 => null );
-            }
-        }
         return $forms_status;
     }
 
     #endregion
 
+    #region -- Event Instance Information -----------------------------------------------------
+
+    /**
+     * Gets a list of all existing event instances of a repeating event
+     * (i.e. those with data in at least one form).
+     * @param string|int $event The unique event name or the (numerical event id).
+     * @return array<int>
+     */
+    public function getRepeatingEventInstances($event) {
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        if (!$this->project->isEventRepeating($event_id)) {
+            throw new Exception("Event {$event_id} is not repeating.");
+        }
+        // Query redcap_data for record_id to find events
+        $instances = array();
+        $q = $this->framework->createQuery();
+        $q->add("SELECT IFNULL(`instance`, 1) AS `instance`
+                 FROM redcap_data 
+                 WHERE `project_id` = ? AND `event_id` = ? AND 
+                       `record` = ? AND `field_name` = ?", [
+            $this->project->getProjectId(),
+            $event_id,
+            $this->record_id,
+            $this->project->getRecordIdField()
+        ]);
+        $result = self::toStatementResult($q->execute());
+        while ($row = $result->fetch_assoc()) {
+            array_push($instances, $row["instance"] * 1);
+        }
+        return $instances;
+    }
+
+    #endregion
 
     #region -- Create Forms (Instances) -------------------------------------------------------
 
@@ -464,20 +510,25 @@ class Record
                  ]);
         if ($event_repeating && count($instances)) {
             $q->add("AND");
-            $$q->addInClause("`event_id`", $instances);
+            $q->addInClause("`instance`", $instances);
         }
         $result = self::toStatementResult($q->execute());
+        // Prepare return array
         $locked_instances = array();
+        foreach ($instances as $instance) {
+            $locked_instances[$instance] = array();
+        }
+        // Fill it with locked forms
         while ($row = $result->fetch_assoc()) {
             $instance = $row["instance"];
-            $form = $row["form"];
+            $form = $row["form_name"];
             $locked_instances[$instance][] = $form;
         }
         return $locked_instances;
     }
 
     /**
-     * Locks non-repeating forms on (repeating) events.
+     * Locks non-repeating forms on a (repeating) event.
      * 
      * @param array<string>|string|null $forms The unique form name(s). Forms must exist on the event and not be repeating. NULL will lock all forms on the event.
      * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
@@ -497,7 +548,7 @@ class Record
             $forms = array($forms);
         }
         foreach ($forms as $form) {
-            if ($this->project->isFormOnEvent($form, $event_id)) {
+            if (!$this->project->isFormOnEvent($form, $event_id)) {
                 throw new Exception("Form '$form' is not on event $event_id.");
             }
         }
@@ -505,71 +556,150 @@ class Record
         if (!$event_repeating && count($instances) > 1 && $instances[0] !== 1) {
             throw new Exception("Invalid instance parameter for non-repeating event {$event_id}.");
         }
-
-
-        // TODO - 
-        // Need to get all instances of the event with existing data - query for record-id
-        if ($event_repeating) {
-            throw new Exception("Locking of forms on repeating events is not implemented yet.");
+        // In case of repeating event and no instances given, get a list of all event instances with data
+        if ($event_repeating && count($instances) == 0) {
+            // Need to get all instances of the event with existing data
+            $instances = $this->getRepeatingEventInstances($event_id);
+        }
+        else if ($event_repeating && count($instances)) {
+            // Ensure that only exiting events are passed as parameters.
+            // To be debated: Throw if mismatch, or just silently limit to existing?
+            // For now, limit (as concurrent operations could have removed an instance).
+            $existing_instances = $this->getRepeatingEventInstances($event_id);
+            $instances = array_intersect($instances, $existing_instances);
+        }
+        else if (!$event_repeating && count($instances) == 0) {
+            // Add default instance 1
+            $instances = array( 1 );
+        }
+        else if (!$event_repeating && count($instances)) {
+            // Ensure that for non-repeating events, if instances are passed as parameter,
+            // this is equal too event 1 only.
+            // In contrast to the situation above, we will throw here, as this is a 
+            // definite error!
+            if (count($instances) > 1 || $instances[0] !== 1) {
+                throw new Exception("Invalid instances parameter passed for non-repeating event {$event_id}");
+            }
         }
 
-        // Assemble list of forms to lock
-        // Get list of locked forms
-        // Get list of gray forms
-
-        // Make a diff to get list of forms to actually lock
-        
+        // Now that validation is done, let's (finally) get to work on the acutal locking process.
+        // First, get a list of already locked forms, as we do not want to add duplicate entries 
+        // to the locking table.
+        $locked_forms = $this->getLockedForms($event_id, $instances);
+        // Then, also get a list of "gray" forms as these have to be excluded as well.
+        $gray_forms = $this->getFormStatus($forms, $event_id);
+        // Now, assemble a list of all the forms/event/instance combinations to lock, excluding
+        // those already locked.
+        $forms_to_lock = array();
+        foreach ($forms as $form) {
+            foreach($instances as $instance) {
+                if (!in_array($form, $locked_forms[$instance]) &&
+                    $gray_forms[$form][$instance] !== null) {
+                    $lock = array(
+                        "form" => $form,
+                        "instance" => $instance
+                    );
+                    array_push($forms_to_lock, $lock);
+                }
+            }
+        }
         // Update database
-
-        return;
-
-
-
-        if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
-            throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
-        }
-        $instances = $this->requireInstances($instances);
-        if (!count($instances)) return; // Nothing to do
-        // Get a list of already locked instances
-        $locked_instances = $this->getLockedFormInstances($form, $event_id);
-        // Determine those to lock
-        $instances_to_lock = array_diff($instances, $locked_instances);
-        if (!count($instances_to_lock)) return; // Nothing to do
-
-        // Lock instances
-        $project_id = $this->project->getProjectId();
-        $now = $this->now();
-        $user_id = $this->userId();
-        $lock_success = array();
-        $lock_fail = array();
-        foreach($instances_to_lock as $instance) {
-            $sql = "INSERT INTO redcap_locking_data 
+        foreach ($forms_to_lock as $lock) {
+            $q = $this->framework->createQuery();
+            $q->add("INSERT INTO redcap_locking_data 
                     (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
-            $result = $this->framework->query($sql, [
-                $project_id,
+                    VALUES (?, ?, ?, ?, ?, ?, ?)", [
+                $this->project->getProjectId(),
                 $this->record_id,
                 $event_id,
-                $form,
-                $user_id,
-                $now,
-                $instance
+                $lock["form"],
+                $this->userId(),
+                $this->now(),
+                $lock["instance"]
             ]);
-            if ($result === true) $lock_success[] = $instance; else $lock_fail[] = $instance;
-        }
-        // Update log (bulk)
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
-        if ($this->project->isLongitudinal()) {
-            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
-        }
-        if (count($lock_success)) {
-            $log_entry = str_replace("#INST#", join(", ", $lock_success), $log_entry);
-            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", $user_id, $project_id, true, $event_id, null, true);
+            try {
+                $result = self::toStatementResult($q->execute());
+            }
+            catch (\Throwable $e) {
+                // Ok, now what? This could only mean a duplicate insert. Silently ignore. No harm.
+                $result = false;
+            }
+            // Update log
+            if ($result === true) {
+                $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($lock["form"])}\nInstance: #INST#";
+                if ($this->project->isLongitudinal()) {
+                    $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+                }
+                $log_entry = str_replace("#INST#", $lock["instance"], $log_entry);
+                REDCap_Logging::logEvent($q->getSQL(), "redcap_locking_data", "LOCK_RECORD", 
+                    $this->record_id, $log_entry, "Lock instrument", "", $this->userId(), 
+                    $this->project->getProjectId(), true, $event_id, $lock["instance"], false);
+            }
         }
     }
 
+    /**
+     * Unlocks non-repeating forms on (repeating) events.
+     * 
+     * @param array<string>|string|null $forms The unique form name(s). Forms must exist on the event and not be repeating. NULL will lock all forms on the event.
+     * @param string|int $event The unique event name or the (numerical) event id (can be omitted in non-longitudinal projects)
+     * @param array<int>|int|null The (list of) event instance(s) or null (for non-repeating events or all events)
+     * @throws Exception An exception is thrown in case of project data structure or privileges violations
+     */
+    public function unlockForms($forms = null, $event = null, $instances = null) {
+        // Check permission
+        $this->project->requirePermission("lock_record");
 
+        // Input validation
+        $event_id = $this->requireEventId($event);
+        // if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
+        //     throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
+        // }
+        // $instances = $this->requireInstances($instances);
+        // if (!count($instances)) return; // Nothing to do
+        // // Get a list of already locked instances
+        // $locked_instances = $this->getLockedFormInstances($form, $event_id);
+        // // Determine those to lock
+        // $instances_to_unlock = array_intersect($instances, $locked_instances);
+        // if (!count($instances_to_unlock)) return; // Nothing to do
 
+        // // Unlock instances
+        // $project_id = $this->project->getProjectId();
+        // $unlock_success = array();
+        // $unlock_fail = array();
+        // foreach ($instances_to_unlock as $instance) {
+        //     $sql = "DELETE FROM redcap_locking_data 
+        //             WHERE `project_id` = ? AND 
+        //                   `record` = ? AND 
+        //                   `event_id` = ? AND 
+        //                   `form_name` = ? AND 
+        //                   `instance` = ?";
+        //     $result = $this->framework->query($sql, [
+        //         $project_id,
+        //         $this->record_id,
+        //         $event_id,
+        //         $form,
+        //         $instance
+        //     ]);
+        //     if ($result === true) {
+        //         // Is the form e-signed? If so, negate the e-signature
+        //         if ($this->isFormInstanceESigned($form, $instance, $event_id)) {
+        //             // It is probably not necessary to check first, but instead simply negate
+        //             $this->negateFormInstanceESignature($form, $instance, $event_id);
+        //         }
+        //     }
+        //     if ($result === true) $unlock_success[] = $instance; else $unlock_fail[] = $instance;
+        // }
+        // // Update log (bulk)
+        // $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
+        // if ($this->project->isLongitudinal()) {
+        //     $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+        // }
+        // if (count($unlock_success)) {
+        //     $log_entry= str_replace("#INST#", join(", ", $unlock_success), $log_entry);
+        //     REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", $this->userId(), $project_id, true, $event_id, null, true);
+        // }
+    }
 
 
 

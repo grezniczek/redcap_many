@@ -366,7 +366,7 @@ class Project
     public function isFormOnEvent($form, $event = null) {
         $event_id = $this->getEventId($event);
         if ($event_id !== null && $this->hasForm($form)) {
-            return array_search($form, $this->proj->eventsForms[$event_id]) !== false;
+            return in_array($form, $this->proj->eventsForms[$event_id]);
         }
         return null;
     }
