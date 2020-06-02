@@ -391,11 +391,17 @@ function buildRecordHomePageToolbar() {
         )
     }
     // Clear
-    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rhp-toolbar-button" data-multiple-em-action="clear-forms"></button>')
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rhp-toolbar-button" data-multiple-em-action="clear-all-forms"></button>')
         .text('Clear') // tt-fy
         .on('click', function() {
             clearRecordHomePageSelection(true)
         })
+    )
+    .append('|')
+    // All
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rhp-toolbar-apply" data-multiple-em-action="add-all-forms"></button>')
+        .text('All') // tt-fy
+        .on('click', addAllToRecordHomePageSelection)
     )
     .append('|')
     // Reset
@@ -513,7 +519,18 @@ function resetRecordHomePageSelection() {
 }
 
 /**
- * Removes all forms from the Forms Selection
+ * Adds all forms and instances to the Forms/Instances Selections.
+ */
+function addAllToRecordHomePageSelection() {
+    $('input[type="checkbox"][data-multiple-em-record]').each(function() {
+        var $cb = $(this)
+        if(!$cb.prop('disabled')) $cb.prop('checked', true)
+    })
+    applyRecordHomePageSelection()
+}
+
+/**
+ * Removes all forms from the Forms/Instances Selection
  * @param {boolean} serverUpdate 
  */
 function clearRecordHomePageSelection(serverUpdate) {
