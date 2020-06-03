@@ -219,23 +219,45 @@ class MultipleExternalModule extends AbstractExternalModule
 
 
     /**
-     * Deletes all currently selected non-repeating forms of the given record.
+     * Deletes all currently selected forms of the given record.
      * @param string $record_id
      */
     function deleteRecordForms($record_id) {
         $pid = $this->getProjectId();
-        $selected = $this->loadSelectedForms($pid, $record_id);
-        // [ "form_name-event_id-instance", ... ]
         if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
         /** @var \DE\RUB\Utility\Project */
         $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
+
+        // Non-repeating forms
+        $selected = $this->loadSelectedForms($pid, $record_id);
+        // [ "form_name-event_id-instance", ... ]
         foreach ($selected as $fei) {
             $parts = explode("-", $fei);
             $form = $parts[0];
             $event_id = $parts[1] * 1;
-            $instance = $parts[2] * 1;
-            $record->deleteFormInstances($form, $instance, $event_id);
+            $instance = $parts[2] == "null" ? null : $parts[2] * 1;
+            if ($project->isEventRepeating($event_id) && $instance === null) {
+                // Fix for repeating event first instance
+                $instance = 1;
+            }
+            $record->deleteForm($form, $event_id, $instance);
+        }
+
+        // Repeating forms
+        $selected = $this->loadSelectedInstances($pid, $record_id);
+        // [
+        //   event_id => [
+        //     form_name => [ 
+        //       instance_number,
+        //       ...
+        //     ]
+        //   ]
+        // ]
+        foreach ($selected as $event_id => $forms) {
+            foreach ($forms as $form => $instances) {
+                $record->deleteFormInstances($form, $instances, $event_id);
+            }
         }
     }
 

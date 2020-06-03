@@ -72,6 +72,14 @@ class Project
     }
 
     /**
+     * Indicates whether surveys are enabled for this project.
+     * @return boolean
+     */
+    public function surveysEnabled() {
+        return $this->proj->project["surveys_enabled"] == 1;
+    }
+
+    /**
      * Gets the name of the record id field.
      * @return string
      */
@@ -251,6 +259,20 @@ class Project
 
 
     #region -- Forms -----------------------------------------------------------------
+
+    /**
+     * Indicates whether the form is enabled as a survey. Returns NULL if the form
+     * does not exist.
+     * @param string $form The unique form name
+     * @return boolean|null
+     */
+    public function isSurvey($form) {
+        if ($this->hasForm($form)) {
+            return $this->surveysEnabled() && 
+                isset($this->proj->forms[$form]["survey_id"]);
+        }
+        return null;
+    }
 
     /** 
      * Gets the form with the record id field (i.e. the first form).

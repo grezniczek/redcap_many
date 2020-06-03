@@ -45,7 +45,6 @@ class MultipleEM_ClearSelectionAjax
                     break;
                 case "delete-record-forms":
                     $module->deleteRecordForms($update["record"]);
-                    $module->deleteRecordInstances($update["record"]);
                     break;
                 case "lock-record-forms": 
                     $module->setFormsLockState($update["record"], true);
