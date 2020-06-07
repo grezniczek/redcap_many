@@ -803,7 +803,43 @@ class Project
 
     #endregion
 
+    #region -- Public Helpers --------------------------------------------------------
 
+    /**
+     * Prettifies an SQL statement.
+     * Can optionally contain comments, but these need to be on separate lines!
+     * When multiple SQL queries are present, it's the callers responsibility to insert
+     * semicolons!
+     * @param string $sql The (multiline) SQL statement
+     * @return string A less multiline SQL statement (one line if there are no comments)
+     */
+    public function oneLineSQL($sql) {
+        $lines = explode("\n", $sql);
+        $result = "";
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            if (substr($line, 0, 2) == "--") {
+                // Comments get their own lines
+                $result .= strlen($result) ? "\n" : "";
+                $result .= $line . "\n";
+            }
+            else {
+                $result .= " $line";
+                if (substr($line, -1) == ";") {
+                    // Newline after semicolons!
+                    $result .= "\n";
+                }
+            }
+        }
+        $result = str_replace("\n ", "\n", $result);
+        do {
+            $result = str_replace("\n\n", "\n", $result, $count);
+        } while ($count > 0);
+        return trim($result);
+    }
+
+    #endregion
 
 
 
