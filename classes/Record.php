@@ -1,18 +1,25 @@
 <?php namespace DE\RUB\MultipleExternalModule;
 
-use Exception;
+use \Exception;
 use \REDCap;
 use \Logging as REDCap_Logging;
 use \UserRights as REDCap_UserRights;
 use \ExternalModules\StatementResult;
 
+// Note: SQL queries are hand-crafter, as the Framework prepared statements seem to
+// not give the correct result, esp. when IS NULL is involved.
+// Furthermore, we want complete statements for logging.
+// All data in Record and Project are guaranteed to be safe.
+
 class Record
 {
-    /** @var Project The project this record belongs to. */
+    /** @var Project The project this record belongs to */
     private $project;
-    /** @var string The id of this record. */
+    /** @var string The id of this record */
     private $record_id;
-    /** @var \ExternalModules\Framework The framework instance. */
+    /** @var string The record id escaped for use in SQL queries */
+    private $db_record;
+    /** @var \ExternalModules\Framework The framework instance */
     private $framework;
 
     private const NON_REPEATING = 1;
@@ -22,6 +29,7 @@ class Record
     function __construct($framework, $project, $record_id) {
         $this->project = $project;
         $this->record_id = $record_id;
+        $this->db_record = db_escape($record_id);
         $this->framework = $framework;
     }
 
@@ -50,7 +58,7 @@ class Record
                 $this->project->getProjectId(),
                 $event_id,
                 $this->record_id,
-                "{$form}_complete"
+                $this->project->getFormStatusFieldNames($form)
             ]);
             $row = $result->fetch_assoc();
             return $row["count"];
@@ -85,7 +93,7 @@ class Record
                 $this->project->getProjectId(),
                 $event_id,
                 $this->record_id,
-                "{$form}_complete"
+                $this->project->getFormStatusFieldNames($form)
             ]);
             $row = $result->fetch_assoc();
             return $row == null ? 0 : $row["instance"];
@@ -94,7 +102,6 @@ class Record
             return null;
         }
     }
-
 
     /**
      * Gets the form status for the specified form(s) or all forms for the specified event. The return value is an associative array:
@@ -140,16 +147,15 @@ class Record
             }
         }
         $q = $this->framework->createQuery();
-        $q->add("SELECT `value`, `field_name`, `instance` FROM redcap_data WHERE `project_id` = ? AND `record` = ? AND event_id = ? AND", [
-            $this->project->getProjectId(), $this->record_id, $event_id
+        $q->add("SELECT `value`, `field_name`, `instance` FROM redcap_data WHERE 
+            `project_id` = ? AND `record` = ? AND event_id = ? AND", [
+            $this->project->getProjectId(), 
+            $this->record_id, $event_id
         ]);
-        $add_complete = function($form_name) { 
-            return $form_name . "_complete"; 
-        };
-        $q->addInClause("`field_name`", array_map($add_complete, $forms));
+        $q->addInClause("`field_name`", $this->project->getFormStatusFieldNames($forms));
         $result = $this->toStatementResult($q->execute());
         while ($row = $result->fetch_assoc()) {
-            $form = substr($row["field_name"], 0, strlen($row["field_name"]) - 9); // Remove "_complete" from end only!
+            $form = $this->project->getFormsFromStatusFieldNames($row["field_name"]);
             $instance = $row["instance"] === null ? 1 : $row["instance"] * 1;
             $value = ($row["value"] === "" || $row["value"] === null) ? null : $row["value"];
             $forms_status[$form][$instance] = $value;
@@ -158,6 +164,7 @@ class Record
     }
 
     #endregion
+
 
     #region -- Event Instance Information -----------------------------------------------------
 
@@ -190,6 +197,62 @@ class Record
             array_push($instances, $row["instance"] * 1);
         }
         return $instances;
+    }
+
+    /**
+     * Checks whether there is any data in the given event (instance).
+     * @param string|int|null $event The unique event name or the (numerical) event id (can be omitted for non-longitudinal projects)
+     * @param array<int>|int|null $instances A list of instances or a single instance number (can be omitted for non-repeating events)
+     * @return boolean
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function hasData($event = null, $instances = null) {
+
+
+    }
+
+    /**
+     * Checks whether there is any data in the record outside the given event (instance).
+     * @param string|int $event The unique event name or the (numerical) event id
+     * @param int|null $instance The instance number (if no instance is specified for repeating events, all instances are excluded).
+     * @return boolean
+     * @throws Exception An exception is thrown in case of project data structure violations
+     */
+    public function hasDataBesides($event, $instance = null) {
+        $event_id = $this->requireEventId($event);
+        $instance = $this->requireSingleInstance($instance);
+        $instance = count($instance) ? $instance[0] : null;
+        // Repeating? Longitudinal?
+        $event_repeating = $this->project->isEventRepeating($event_id);
+        $longitudinal = $this->project->isLongitudinal();
+        // Cannot have data if not repeating AND not longitudinal
+        if (!$longitudinal && !$event_repeating) return false;
+        // Cannot have data if non-longidudinal with repating event, but all considered
+        if (!$longitudinal && $event_repeating && $instance === null) return false;
+        // Build queries
+        $form_status_fields = $this->project->getFormStatusFieldNames();
+        $q = $this->framework->createQuery();
+        $q->add("SELECT 1 FROM redcap_data WHERE `project_id` = ? AND `record` = ?", [
+            $this->project->getProjectId(),
+            $this->record_id
+        ]);
+        if ($event_repeating && $instance !== null) {
+            $instance = $instance == 1 ? null : $instance;
+            $q->add("AND !(`event_id` = ? AND `instance` = ?)", [
+                $event_id,
+                $instance
+            ]);
+        }
+        else {
+            $q->add("AND !(`event_id` = ?)", [
+                $event_id
+            ]);
+        }
+        $q->add("AND");
+        $q->addInClause("`field_name`", $form_status_fields);
+        $q->add("LIMIT 1");
+        $result = self::toStatementResult($q->execute());
+        return $result->num_rows > 0;
     }
 
     #endregion
@@ -244,7 +307,7 @@ class Record
         $first_instance = $last_instance + 1;
         $data = array();
         foreach ($instances as $instance_data) {
-            $instance_data["{$form}_complete"] = 2;
+            $instance_data[$this->project->getFormStatusFieldNames($form)] = 2;
             $data[++$last_instance] = $instance_data;
         }
         $data = array(
@@ -361,10 +424,13 @@ class Record
         if (!$repeating && count($instances) != 1 && $instances[0] != 1) {
             throw new Exception("Invalid instance parameter for non-repeating form '{$form}' / event {$event_id} combination. Set to 1 or NULL.");
         }
+        $instance = $instances[0];
 
         // Get form status - if gray, there is nothing to do
-        $formsStatus = $this->getFormStatus($form, $event_id);
-
+        $formsStatus = $this->getFormStatus(null, $event_id);
+        if ($formsStatus[$form][$instance] === null) {
+            return;
+        }
 
         // Get list of all fields with data
         // Note - this will never include the record id field!
@@ -397,21 +463,20 @@ class Record
         }
 
         // Delete all responses from data table for this form
-        $instance = $instances[0];
-        $query_instance = $instance == 1 ? null : $instance;
-        $q = $this->framework->createQuery();
-        $q->add("DELETE FROM redcap_data 
-                 WHERE `project_id` = ? AND `event_id` = ? AND 
-                       `record` = ? AND `instance` = ?", [
-            $this->project->getProjectId(),
-            $event_id,
-            $this->record_id,
-            $query_instance
-        ]);
-        $q->addInClause("`field_name`", $fields);
-        // $result = self::toStatementResult($deleteQuery->execute());
+        $sql = "DELETE FROM redcap_data 
+                WHERE `project_id` = {$this->project->getProjectId()} AND 
+                      `event_id` = {$event_id} AND 
+                      `record` = '{$this->db_record}' AND 
+                      `instance` ";
+        $sql .= $instance == 1 ? "IS NULL" : "= {$instance}";
+        $sql .= " AND `field_name` IN (" . prep_implode($fields) . ")";
+        $result = db_query($sql);
 
-        // Update log (setting fields with data to their empty default values)
+        // Prepare logging information
+        $log_sql = "-- Deleted by EM Framework API\n{$sql}"; 
+        $log_desc = "Delete all record data for single form"; // DO NOT CHANGE - REDCap relies on this for data history!
+        $log_reason = $form_repeating ? "[instance = {$instance}]" : ""; // REDCap Bug: Instance number is not logged for form deletions!
+        // For logging, pretend fields were set to their empty default values
         $logging = array();
         foreach ($fields as $field) {
             if (!empty($data[$field][$instance])) {
@@ -426,95 +491,45 @@ class Record
                 }
             }
         }
-        // Log the data change
-        $log_sql = $q->getSQL() . " -- Deleted by EM Framework API"; 
-        $log_desc = "Delete all record data for single form"; // DO NOT CHANGE - REDCap relies on this for data history!
-        $log_reason = $form_repeating ? "[instance = {$instance}]" : ""; // REDCap Bug: Instance number is not logged for form deletions!
-        REDCap_Logging::logEvent($log_sql, "redcap_data", "UPDATE", $this->record_id, 
-            join(",\n", $logging), $log_desc, $log_reason, $this->project->getPermissionsUser(), 
-            $this->project->getProjectId(), $this->now(), $event_id, $instance);
+        $log_display = join(",\n", $logging);
 
-
-        // There is more to do still!
-
+        // There is more housekeeping to do still!
         if ($this->project->isLongitudinal()) {
             // Check if all forms on this event/instance have gray status icon 
             // (implying that we just deleted the only form with data for this event)
             // We already obtained the form statuses previously. First, mark the one just
             // delete as gray.
             $formsStatus[$form][$instance] = null;
-
-            $allFormsDeletedOnThisEvent = true; // or false?
+            // Then check for the rest of the event (instance)
+            $allFormsDeletedOnThisEvent = true;
+            foreach ($formsStatus as $_ => $this_instances) {
+                $allFormsDeletedOnThisEvent &= $this_instances[$instance] === null;
+            }
 
             if ($allFormsDeletedOnThisEvent) {
                 // Now check to see if other events/instances for this record have data
-                $otherEventsHaveData = true; // or false? Make a $record->hasData() method
-
+                $otherEventsHaveData = $this->hasDataBesides($event_id, $instance);
                 if ($otherEventsHaveData) {
                     // Since other events have data for this record, we should go ahead and
                     // remove ALL data from this event (because we might have __GROUPID__ and 
                     // record ID field stored on backend for this event still)
-    
+                    $sql = "DELETE FROM redcap_data 
+                            WHERE `project_id` = {$this->project->getProjectId()} AND 
+                                  `record` = '{$this->db_record}' AND
+                                  `event_id` = {$event_id} AND 
+                                  `instance` ";
+                    $sql .= $instance == 1 ? "IS NULL" : "= {$instance}";
+                    $result = db_query($sql);
+                    if ($result) {
+                        $log_sql .= ";\n{$sql}";
+                    }
                 }
             }
         }
 
-
         // If this form is a survey, then set all survey response timestamps to NULL
         // (or delete row if a non-first repeating instance)
         if ($this->project->isSurvey($form)) {
-
-
-        }
-
-
-
-        return;
-
-        // Code from DataEntry/index.php
-        // DELETE ALL DATA ON SINGLE FORM ONLY
-
-        // elseif ($user_rights['record_delete'] && $_POST['submit-action'] == "submit-btn-deleteform")
-        // {
-        //     // Delete all responses from data table for this form (do not delete actual record name - will keep same record name)
-        //     $sql = "delete from redcap_data where project_id = $project_id
-        //             and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
-        //             and field_name in (" . prep_implode($eraseFields) . ")" .
-        //             ($Proj->hasRepeatingFormsEvents() ? " AND instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'") : "");
-        //     db_query($sql);
-        //     // Longitudinal projects only
-        //     $sql3 = "";
-
-
-
-            // if ($longitudinal) {
-            //     // Check if all forms on this event/instance have gray status icon (implying that we just deleted the only form with data for this event)
-            //     $formStatusValues = Records::getFormStatus(PROJECT_ID, array($fetched.$entry_num), null, null, array($_GET['event_id']=>$Proj->eventsForms[$_GET['event_id']]));
-            //     $allFormsDeletedThisEvent = true;
-            //     foreach ($formStatusValues[$fetched.$entry_num][$_GET['event_id']] as $this_form) {
-            //         if (!empty($this_form)) {
-            //             $allFormsDeletedThisEvent = false;
-            //             break;
-            //         }
-            //     }
-            //     if ($allFormsDeletedThisEvent) {
-            //         // Now check to see if other events/instances for this record have data
-            //         $sql = "select 1 from redcap_data where project_id = $project_id
-            //                 and !(event_id = {$_GET['event_id']} and instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'").") 
-            //                 and record = '".db_escape($fetched.$entry_num)."' limit 1";
-            //         $q = db_query($sql);
-            //         $otherEventsHaveData = (db_num_rows($q) > 0);
-            //         if ($otherEventsHaveData) {
-            //             // Since other events have data for this record, we should go ahead and remove ALL data from this event 
-            //             // (because we might have __GROUPID__ and record ID field stored on backend for this event still)
-            //             $sql3 = "delete from redcap_data where project_id = $project_id
-            //                     and event_id = {$_GET['event_id']} and record = '".db_escape($fetched.$entry_num)."'
-            //                     and instance ".($_GET['instance'] == '1' ? "is NULL" : "= '".db_escape($_GET['instance'])."'");
-            //             db_query($sql3);
-            //         }
-            //     }
-            // }
-
 
 
 
@@ -553,26 +568,28 @@ class Record
             // }
 
 
+        }
 
-
-
-            // // Log the data change
-            // $log_event_id = Logging::logEvent("$sql; $sql2; $sql3", "redcap_data", "UPDATE", $fetched.$entry_num, implode(",\n",$eraseFieldsLogging), "Delete all record data for single form",
-            //                             "", "", "", true, null, $_GET['instance']);
-            // // Reset Post array
-            // $_POST = array('submit-action'=>$_POST['submit-action'], 'hidden_edit_flag'=>1);
-        // }
+        // Log the data change
+        $log_sql = $this->project->oneLineSQL($log_sql);
+        REDCap_Logging::logEvent($log_sql, "redcap_data", "UPDATE", $this->record_id,
+            $log_display, $log_desc, $log_reason, $this->project->getPermissionsUser(), 
+            $this->project->getProjectId(), $this->now(), $event_id, $instance);
     }
 
     /**
      * Deletes a file (marks it for deletion)
      * @param int $edoc_id The document ID
+     * @return string The SQL query that was executed
      */
     public function deleteFile($edoc_id) {
         $edoc_id = $this->requireInt($edoc_id);
-        $sql = "UPDATE redcap_edocs_metadata SET `delete_date` = ? WHERE `doc_id` = ? AND `project_id` = ?";
-        $params = array($this->now(), $edoc_id, $this->project->getProjectId());
-        $this->framework->query($sql, $params);
+        $sql = "UPDATE redcap_edocs_metadata 
+                SET `delete_date` = '{$this->now()}' 
+                WHERE `doc_id` = {$edoc_id} AND 
+                      `project_id` = {$this->project->getProjectId()}";
+        $result = db_query($sql);
+        return $sql;
     }
 
     #endregion
@@ -704,21 +721,20 @@ class Record
             }
         }
         // Update database
+        $db_user = db_escape($this->userId());
         foreach ($forms_to_lock as $lock) {
-            $q = $this->framework->createQuery();
-            $q->add("INSERT INTO redcap_locking_data 
-                    (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)", [
-                $this->project->getProjectId(),
-                $this->record_id,
-                $event_id,
-                $lock["form"],
-                $this->userId(),
-                $this->now(),
-                $lock["instance"]
-            ]);
+            $sql = "INSERT INTO redcap_locking_data 
+                            (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`) 
+                        VALUES ( 
+                             {$this->project->getProjectId()}, 
+                            '{$this->db_record}', 
+                             {$event_id}, 
+                            '{$lock["form"]}', 
+                            '{$db_user}', 
+                            '{$this->now()}', 
+                             {$lock["instance"]})";
             try {
-                $result = self::toStatementResult($q->execute());
+                $result = db_query($sql);
             }
             catch (\Throwable $e) {
                 // Ok, now what? This could only mean a duplicate insert. Silently ignore. No harm.
@@ -734,7 +750,9 @@ class Record
                 if ($this->project->isLongitudinal()) {
                     $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
                 }
-                REDCap_Logging::logEvent($q->getSQL(), "redcap_locking_data", "LOCK_RECORD", 
+                $log_sql = $this->project->oneLineSQL(
+                    "-- Form locked by Framework API\n$sql");
+                REDCap_Logging::logEvent($log_sql, "redcap_locking_data", "LOCK_RECORD", 
                     $this->record_id, $log_entry, "Lock instrument", "", $this->userId(), 
                     $this->project->getProjectId(), true, $event_id, null, false);
             }
@@ -816,17 +834,14 @@ class Record
             }
         }
         foreach ($forms_to_unlock as $unlock) {
-            $q = $this->framework->createQuery();
-            $q->add("DELETE FROM redcap_locking_data 
-                     WHERE `project_id` = ? AND `record` = ? AND `event_id` = ? AND
-                           `form_name` = ? AND `instance` = ?", [
-                $this->project->getProjectId(),
-                $this->record_id,
-                $event_id,
-                $unlock["form"],
-                $unlock["instance"]
-            ]);
-            $result = $q->execute();
+            $db_form = db_escape($unlock["form"]);
+            $sql = "DELETE FROM redcap_locking_data WHERE 
+                `project_id` = {$this->project->getProjectId()} AND 
+                `record` = '{$this->db_record}' AND 
+                `event_id` = {$event_id} AND
+                `form_name` = '{$db_form}' AND 
+                `instance` = {$unlock["instance"]}";
+            $result = db_query($sql);
             if ($result === true) {
                 // Is the form e-signed? If so, negate the e-signature
                 if ($this->isFormESigned($unlock["form"], $event_id, $instance)) {
@@ -843,7 +858,9 @@ class Record
                 if ($this->project->isLongitudinal()) {
                     $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
                 }
-                REDCap_Logging::logEvent($q->getSQL(), "redcap_locking_data", "LOCK_RECORD", 
+                $log_sql = $this->project->oneLineSQL(
+                    "-- Form unlocked by Framework API\n$sql");
+                REDCap_Logging::logEvent($log_sql, "redcap_locking_data", "LOCK_RECORD", 
                     $this->record_id, $log_entry, "Unlock instrument", "", $this->userId(), 
                     $this->project->getProjectId(), true, $event_id, null, false);
             }
@@ -909,34 +926,46 @@ class Record
         if (!count($instances_to_lock)) return; // Nothing to do
 
         // Lock instances
-        $project_id = $this->project->getProjectId();
-        $now = $this->now();
-        $user_id = $this->userId();
+        $db_form = db_escape($form);
+        $db_user = db_escape($this->userId());
         $lock_success = array();
         $lock_fail = array();
+        $log_values = array();
+        $sql = "INSERT INTO redcap_locking_data 
+                  (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`) 
+                VALUES ";
         foreach($instances_to_lock as $instance) {
-            $sql = "INSERT INTO redcap_locking_data 
-                    (`project_id`, `record`, `event_id`, `form_name`, `username`, `timestamp`, `instance`)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
-            $result = $this->framework->query($sql, [
-                $project_id,
-                $this->record_id,
-                $event_id,
-                $form,
-                $user_id,
-                $now,
-                $instance
-            ]);
-            if ($result === true) $lock_success[] = $instance; else $lock_fail[] = $instance;
+            $values = "( 
+                 {$this->project->getProjectId()}, 
+                '{$this->db_record}', 
+                 {$event_id}, 
+                '{$db_form}', 
+                '{$db_user}', 
+                '{$this->now()}', 
+                 {$instance}
+            )";
+            $result = db_query($sql . $values);
+            if ($result === true) {
+                $lock_success[] = $instance;
+                $log_values[] = $values;
+            } 
+            else {
+                $lock_fail[] = $instance;
+            }
         }
         // Update log (bulk)
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
-        if ($this->project->isLongitudinal()) {
-            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
-        }
         if (count($lock_success)) {
-            $log_entry = str_replace("#INST#", join(", ", $lock_success), $log_entry);
-            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Lock instrument", "", $user_id, $project_id, true, $event_id, null, true);
+            $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
+            if ($this->project->isLongitudinal()) {
+                $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+            }
+            $log_entry = str_replace("#INST#", join(",", $lock_success), $log_entry);
+            $log_sql = "-- Form instances locked by Framework API\n$sql" . 
+                join(", ", $log_values);
+            $log_sql = $this->project->oneLineSQL($log_sql);
+            REDCap_Logging::logEvent($log_sql, "redcap_locking_data", "LOCK_RECORD", 
+                $this->record_id, $log_entry, "Lock instrument", "", $this->userId(), 
+                $this->project->getProjectId(), true, $event_id, null, true);
         }
     }
 
@@ -966,40 +995,43 @@ class Record
         if (!count($instances_to_unlock)) return; // Nothing to do
 
         // Unlock instances
-        $project_id = $this->project->getProjectId();
         $unlock_success = array();
         $unlock_fail = array();
+        $db_form = db_escape($form);
+        $log_sql = array();
         foreach ($instances_to_unlock as $instance) {
-            $sql = "DELETE FROM redcap_locking_data 
-                    WHERE `project_id` = ? AND 
-                          `record` = ? AND 
-                          `event_id` = ? AND 
-                          `form_name` = ? AND 
-                          `instance` = ?";
-            $result = $this->framework->query($sql, [
-                $project_id,
-                $this->record_id,
-                $event_id,
-                $form,
-                $instance
-            ]);
+            $sql = "DELETE FROM redcap_locking_data WHERE 
+                `project_id` = {$this->project->getProjectId()} AND 
+                `record` = '{$this->db_record}' AND 
+                `event_id` = {$event_id} AND
+                `form_name` = '{$db_form}' AND 
+                `instance` = {$instance}";
+            $result = db_query($sql);
             if ($result === true) {
+                $log_sql[] = $sql;
                 // Is the form e-signed? If so, negate the e-signature
                 if ($this->isFormInstanceESigned($form, $instance, $event_id)) {
                     // It is probably not necessary to check first, but instead simply negate
                     $this->negateFormInstanceESignature($form, $instance, $event_id);
                 }
+                $unlock_success[] = $instance;
             }
-            if ($result === true) $unlock_success[] = $instance; else $unlock_fail[] = $instance;
+            else {
+                $unlock_fail[] = $instance;
+            }
         }
         // Update log (bulk)
-        $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
-        if ($this->project->isLongitudinal()) {
-            $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
-        }
         if (count($unlock_success)) {
+            $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
+            if ($this->project->isLongitudinal()) {
+                $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
+            }
             $log_entry= str_replace("#INST#", join(", ", $unlock_success), $log_entry);
-            REDCap_Logging::logEvent($sql, "redcap_locking_data", "LOCK_RECORD", $this->record_id, $log_entry, "Unlock instrument", "", $this->userId(), $project_id, true, $event_id, null, true);
+            $log_sql = "-- Form instances unlocked by Framework API\n" . join(";\n", $log_sql);
+            $log_sql = $this->project->oneLineSQL($log_sql);
+            REDCap_Logging::logEvent($log_sql, "redcap_locking_data", "LOCK_RECORD", 
+                $this->record_id, $log_entry, "Unlock instrument", "", $this->userId(), 
+                $this->project->getProjectId(), true, $event_id, null, true);
         }
     }
 
@@ -1029,17 +1061,14 @@ class Record
 
         // Delete from table
         // No need to check if table row exists
-        $q = $this->framework->createQuery();
-        $q->add("DELETE FROM redcap_esignatures 
-                        WHERE `project_id` = ? AND `record` = ? AND `event_id` = ? AND 
-                              `form_name` = ? AND `instance` = ?", [
-            $this->project->getProjectId(),
-            $this->record_id,
-            $event_id,
-            $form,
-            $instance[0]
-        ]);
-        $result = $q->execute();
+        $db_form = db_escape($form);
+        $sql = "DELETE FROM redcap_esignatures WHERE 
+            `project_id` = {$this->project->getProjectId()} AND 
+            `record` = '{$this->db_record}' AND 
+            `event_id` = {$event_id} AND 
+            `form_name` = '{$db_form}' AND 
+            `instance` = {$instance[0]}";
+        $result = db_query($sql);
         if ($result === true) {
             // Update log
             $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}";
@@ -1049,11 +1078,14 @@ class Record
             if ($event_repeating) {
                 $log_entry .= "\nInstance: {$instance[0]}";
             }
-            REDCap_Logging::logEvent($q->getSQL(), "redcap_esignatures", "ESIGNATURE", 
+            $log_sql = $this->project->oneLineSQL(
+                "-- E-Signature(s) negated by Framework API\n$sql");
+            REDCap_Logging::logEvent($log_sql, "redcap_esignatures", "ESIGNATURE", 
                 $this->record_id, $log_entry, "Negate e-signature", "", $this->userId(), 
                 $this->project->getProjectId(), true, $event_id, null, false);
         }
     }
+
 
     /**
      * Negates an e-signature on a form instance.
@@ -1070,31 +1102,40 @@ class Record
             throw new Exception("Form '{$form}' is not repeating on event '{$event_id}'.");
         }
         $instances = $this->requireInstances($instances);
-        $project_id = $this->project->getProjectId();
         $log_entry = "Record: {$this->record_id}\nForm: {$this->project->getFormDisplayName($form)}\nInstance: #INST#";
         if ($this->project->isLongitudinal()) {
             $log_entry .= "\nEvent: " . html_entity_decode($this->project->getEventDisplayName($event_id), ENT_QUOTES);
         }
+        $log_sql = array ();
+        $db_form = db_escape($form);
         foreach ($instances as $instance) {
             // No need to check if table row exists
-            $sql = "DELETE FROM redcap_esignatures 
-                    WHERE `project_id` = ? AND 
-                        `record` = ? AND 
-                        `event_id` = ? AND 
-                        `form_name` = ? AND 
-                        `instance` = ?";
-            $result = $this->framework->query($sql, [
-                $project_id,
-                $this->record_id,
-                $event_id,
-                $form,
-                $instance
-            ]);
+            $sql = "DELETE FROM redcap_esignatures WHERE 
+                `project_id` = {$this->project->getProjectId()} AND 
+                `record` = '{$this->db_record}' AND 
+                `event_id` = {$event_id} AND
+                `form_name` = '{$db_form}' AND 
+                `instance` = {$instance}";
+            $result = db_query($sql);
             if ($result === true) {
-                // Update log
-                REDCap_Logging::logEvent($sql, "redcap_esignatures", "ESIGNATURE", $this->record_id, str_replace("#INST#", $instance, $log_entry), "Negate e-signature", "", $this->userId(), $project_id, true, $event_id, null, false);
+                $log_sql[] = $sql;
             }
         }
+        if (count($log_sql)) {
+            // Update log
+            $log_sql = $this->project->oneLineSQL(
+                "-- Form instance e-signature negated by Framework API\n" .
+                join(";\n", $log_sql)
+            );
+            $log_entry = str_replace("#INST#", $instance, $log_entry);
+            REDCap_Logging::logEvent($log_sql, "redcap_esignatures", "ESIGNATURE", 
+                $this->record_id, $log_entry, "Negate e-signature", "", $this->userId(), 
+                $this->project->getProjectId(), true, $event_id, null, true);
+        }
+        else {
+            $log_sql = "";
+        }
+        return $log_sql;
     }
 
 
@@ -1282,7 +1323,7 @@ class Record
         else if ($mode == self::REPEAT_FORM) {
             // Repeating form.
             $sql .= "`field_name` = ? AND (";
-            array_push($parameters, "{$form}_complete");
+            array_push($parameters, $this->project->getFormStatusFieldNames($form));
             if (in_array(1, $instances)) {
                 $sql .= "`instance` IS NULL";
                 if (count($instances) > 1) {
@@ -1494,12 +1535,25 @@ class Record
             $instances = array();
         }
         if (!is_array($instances)) {
-            throw new \Exception("Invalid instances parameter '{$instances}'.");
+            throw new Exception("Invalid instances parameter '{$instances}'.");
         }
         foreach ($instances as $instance) {
             if (!is_integer($instance) || $instances < 1) {
-                throw new \Exception("Invalid instance '{$instance}'. Must be an integer > 0.");
+                throw new Exception("Invalid instance '{$instance}'. Must be an integer > 0.");
             }
+        }
+        return $instances;
+    }
+
+    /**
+     * Validates the 'instances' parameter to represent single instance (or none).
+     * @param int|null $instance
+     * @return array<int> The instance
+     */
+    private function requireSingleInstance($instances) {
+        $instances = $this->requireInstances($instances);
+        if (count($instances) > 1) {
+            throw new Exception("Must not specify more than one instance.");
         }
         return $instances;
     }
@@ -1522,25 +1576,25 @@ class Record
         $min_instance = 99999999;
         foreach ($instances as $instance) {
             if (!is_int($instance) || $instance < 1) {
-                throw new \Exception("Instances must be integers > 0.");
+                throw new Exception("Instances must be integers > 0.");
             }
             $max_instance = max($max_instance, $instance);
             $min_instance = min($min_instance, $instance);
         }
         if (count($instances) && $max_instance == 0) {
-            throw new \Exception("Invalid instances.");
+            throw new Exception("Invalid instances.");
         }
         // Check event.
         $event_id = $this->project->getEventId($event);
         $project_id = $this->project->getProjectId();
         if ($event_id === null) {
-            throw new \Exception("Event '{$event}' does not exist in project '{$project_id}'.");
+            throw new Exception("Event '{$event}' does not exist in project '{$project_id}'.");
         }
         if($this->project->isEventRepeating($event)) {
             // All fields on this event?
             foreach ($fields as $field) {
                 if (!$this->project->isFieldOnEvent($field, $event)) {
-                    throw new \Exception("Field '{$field}' is not on event '{$event}'.");
+                    throw new Exception("Field '{$field}' is not on event '{$event}'.");
                 }
             }
             $mode = self::REPEAT_EVENT;
@@ -1550,13 +1604,13 @@ class Record
             $form = $this->project->areFieldsOnSameForm($fields);
             // And if so, is it repeating?
             if ($form && $max_instance > 1 && !$this->project->isFormRepeating($form, $event)) {
-                throw new \Exception("Invalid instance(s). Fields are on form '{$form}' which is not repeating on event '{$event}.");
+                throw new Exception("Invalid instance(s). Fields are on form '{$form}' which is not repeating on event '{$event}.");
             }
             if (!$form) {
                 // Fields are on more than one form. None of the fields must be on a repeating form.
                 foreach ($fields as $field) {
                     if ($this->project->isFieldOnRepeatingForm($field, $event)) {
-                        throw new \Exception("Must not mix fields that are on non-repeating and repeating forms.");
+                        throw new Exception("Must not mix fields that are on non-repeating and repeating forms.");
                     }
                 }
             }
@@ -1566,7 +1620,5 @@ class Record
     }
 
     #endregion
-
-
 
 }
