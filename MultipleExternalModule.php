@@ -137,7 +137,6 @@ class MultipleExternalModule extends AbstractExternalModule
                 // i.e. "repeat_instrument_table-" + event_id + "-" + form name
                 // Then, JS side can use this to add UI elements
                 if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-                /** @var \DE\RUB\Utility\Project */
                 $project = Project::get($this->framework, $project_id);
                 $record = $project->getRecord($record_id);
                 // Repeating forms
@@ -225,7 +224,6 @@ class MultipleExternalModule extends AbstractExternalModule
     function deleteRecordForms($record_id) {
         $pid = $this->getProjectId();
         if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        /** @var \DE\RUB\Utility\Project */
         $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
 
@@ -241,7 +239,17 @@ class MultipleExternalModule extends AbstractExternalModule
                 // Fix for repeating event first instance
                 $instance = 1;
             }
-            $record->deleteForm($form, $event_id, $instance);
+            try {
+                $record->deleteForm($form, $event_id, $instance);
+                // Remove from selection
+                unset($selected[array_search($fei, $selected)]);
+            }
+            catch (\Throwable $e) {
+                throw new \Exception("Form deletion failed: {$e->getMessage()}");
+            }
+            finally {
+                $this->saveSelectedForms($pid, $record_id, $selected);
+            }
         }
 
         // Repeating forms
@@ -254,39 +262,27 @@ class MultipleExternalModule extends AbstractExternalModule
         //     ]
         //   ]
         // ]
-        foreach ($selected as $event_id => $forms) {
-            foreach ($forms as $form => $instances) {
-                $record->deleteFormInstances($form, $instances, $event_id);
+        try {
+            foreach ($selected as $event_id => $forms) {
+                foreach ($forms as $form => $instances) {
+                    foreach ($instances as $instance) {
+                        $record->deleteForm($form, $event_id, $instance);
+                        // Remove from selection
+                        unset($selected[$event_id][$form][array_search($instance, $instances)]);
+                    }
+                }
             }
+        }
+        catch (\Throwable $e) {
+            throw new \Exception("Form deletion failed: {$e->getMessage()}");
+        }
+        finally {
+            $this->saveSelectedInstances($pid, $record_id, null, null, $selected);
         }
     }
 
 
-    /**
-     * Deletes all currently selected repeating form instances of the given record.
-     * @param string $record_id
-     */
-    function deleteRecordInstances($record_id) {
-        $pid = $this->getProjectId();
-        $selected = $this->loadSelectedInstances($pid, $record_id);
-        // [
-        //   event_id => [
-        //     form_name => [ 
-        //       instance_number,
-        //       ...
-        //     ]
-        //   ]
-        // ]
-        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        /** @var \DE\RUB\Utility\Project */
-        $project = Project::get($this->framework, $pid);
-        $record = $project->getRecord($record_id);
-        foreach ($selected as $event_id => $forms) {
-            foreach ($forms as $form => $instances) {
-                $record->deleteFormInstances($form, $instances, $event_id);
-            }
-        }
-    }
+
 
 
     /**
@@ -296,7 +292,6 @@ class MultipleExternalModule extends AbstractExternalModule
      */
     function setFormsLockState($record_id, $locked) {
         $pid = $this->getProjectId();
-        /** @var \DE\RUB\Utility\Project */
         if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
         $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
@@ -436,7 +431,15 @@ class MultipleExternalModule extends AbstractExternalModule
     }
 
     private function saveSelectedInstances($pid, $record_id, $event_id, $form, $instances) {
-        $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
+        if ($event_id === null && $form === null) {
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id] = $instances;
+        }
+        else if ($form === null) {
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id] = $instances;
+        }
+        else {
+            $_SESSION[self::MULTIPLE_EM_SESSION_KEY_INSTANCES][$pid][$record_id][$event_id][$form] = $instances;
+        }
     }
 
     private function isInstanceSelected($pid, $record_id, $event_id, $form, $instance) {

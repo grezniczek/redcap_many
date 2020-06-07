@@ -8,7 +8,7 @@
 			"name": "EM Framework"
 		},
 		{
-			"path": "..\\..\\redcap_v10.0.1",
+			"path": "..\\..\\codebase",
 			"name": "REDCap"
 		}
 	],

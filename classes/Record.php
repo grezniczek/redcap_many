@@ -441,11 +441,17 @@ class Record
         // Perform deletion - there is a LOT to consider
 
         // Unlock the form (this breaks all e-sigs implicitly)
-        if ($form_repeating) {
-            $this->unlockFormInstances($form, $instances, $event_id);
+        // This might throw if the form is locked and the user does not have lock/unlock privileges
+        try {
+            if ($form_repeating) {
+                $this->unlockFormInstances($form, $instances, $event_id);
+            }
+            else {
+                $this->unlockForms($form, $event_id, $instances);
+            }
         }
-        else {
-            $this->unlockForms($form, $event_id, $instances);
+        catch (\Throwable $e) {
+            throw new Exception("Cannot delete locked form '{$form}' on event {$event_id} - insufficient rights.");
         }
 
         // Are there any file upload or signature fields? 
@@ -529,47 +535,40 @@ class Record
 
         // If this form is a survey, then set all survey response timestamps to NULL
         // (or delete row if a non-first repeating instance)
-        if ($this->project->isSurvey($form)) {
-
-
-
-            // If this form is a survey, then set all survey response timestamps to NULL (or delete row if a non-first repeating instance)
-            // $sql2 = "";
-            // if ($surveys_enabled && isset($Proj->forms[$_GET['page']]['survey_id'])) 
-            // {
-            //     $sql2 = "update redcap_surveys_participants p, redcap_surveys_response r
-            //             set r.first_submit_time = null, r.completion_time = null
-            //             where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
-            //             and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}";
-            //     db_query($sql2);
-            //     // For repeating instruments/events, remove this instance from participant list if instance > 1
-            //     $setNullTimestamps = true;
-            //     if ($_GET['instance'] > 1 && ($Proj->isRepeatingEvent($_GET['event_id']) || $Proj->isRepeatingForm($_GET['event_id'], $_GET['page']))) {
-            //         $sql3 = "select p.participant_id from redcap_surveys_participants p, redcap_surveys_response r
-            //                 where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
-            //                 and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}
-            //                 limit 1";
-            //         $q = db_query($sql3);
-            //         if (db_num_rows($q)) {
-            //             $setNullTimestamps = false;
-            //             $participant_id = db_result($q, 0);
-            //             $sql2 = "delete from redcap_surveys_participants where participant_id = $participant_id";
-            //             db_query($sql2);	
-            //         }
-            //     }
-            //     if ($setNullTimestamps) {
-            //         // If this form is a survey, then set all survey response timestamps to NULL (or 
-            //         $sql2 = "update redcap_surveys_participants p, redcap_surveys_response r
-            //                 set r.first_submit_time = null, r.completion_time = null
-            //                 where r.participant_id = p.participant_id and p.survey_id = {$Proj->forms[$_GET['page']]['survey_id']}
-            //                 and r.record = '".db_escape($fetched.$entry_num)."' and p.event_id = {$_GET['event_id']} and r.instance = {$_GET['instance']}";
-            //         db_query($sql2);	
-            //     }
-            // }
-
-
+        if ($this->project->surveysEnabled() && $this->project->isSurvey($form)) {
+            $survey_id = $this->project->getSurveyId($form);
+            $sql = "UPDATE redcap_surveys_participants p, redcap_surveys_response r 
+                    SET r.first_submit_time = NULL, r.comletion_time = NULL
+                    WHERE r.participant_id = p.participant_id AND
+                          p.survey_id = {$survey_id} AND
+                          r.record = '{$this->db_record}' AND
+                          p.event_id = {$event_id} AND 
+                          r.instance = {$instance}";
+            $result = db_query($sql);
+            if ($result == true) {
+                $log_sql .= ";\n{$sql}";
+            }
+            // For repeating instruments/events, remove this instance from participant list if instance > 1
+            if ($repeating && $instance > 1) {
+                $sql = "SELECT p.participant_id 
+                        FROM redcap_surveys_participants p, redcap_surveys_response r
+                        WHERE r.participant_id = p.participant_id AND
+                              p.survey_id = {$survey_id} AND
+                              r.record = '{$this->db_record}' AND
+                              p.event_id = {$event_id} AND
+                              r.instance = {$instance}
+                        LIMIT 1";
+                $result = db_query($sql);
+                if (db_num_rows($result)) {
+                    $participant_id = db_result($result, 0);
+                    $sql = "DELETE FROM redcap_surveys_participants WHERE participant_id = {$participant_id}";
+                    $result = db_query($sql);
+                    if ($result === true) {
+                        $log_sql .= ";\n{$sql}";
+                    }
+                }
+            }
         }
-
         // Log the data change
         $log_sql = $this->project->oneLineSQL($log_sql);
         REDCap_Logging::logEvent($log_sql, "redcap_data", "UPDATE", $this->record_id,
@@ -768,9 +767,6 @@ class Record
      * @throws Exception An exception is thrown in case of project data structure or privileges violations
      */
     public function unlockForms($forms = null, $event = null, $instances = null) {
-        // Check permission
-        $this->project->requirePermission("lock_record");
-
         // Input validation
         $event_id = $this->requireEventId($event);
         $instances = $this->requireInstances($instances);
@@ -833,6 +829,13 @@ class Record
                 }
             }
         }
+        // Anything to do?
+        if (!count($forms_to_unlock)) return;
+
+        // Check permission to unlock - we do this late when we know there is actually anything to do
+        $this->project->requirePermission("lock_record");
+
+        // Unlock
         foreach ($forms_to_unlock as $unlock) {
             $db_form = db_escape($unlock["form"]);
             $sql = "DELETE FROM redcap_locking_data WHERE 
@@ -978,9 +981,6 @@ class Record
      * @throws Exception An exception is thrown in case of project data structure violations
      */
     public function unlockFormInstances($form, $instances, $event = null) {
-        // Check permission
-        $this->project->requirePermission("lock_record");
-
         // Input validation
         $event_id = $this->requireEventId($event);
         if (!$this->project->isFormRepeating($this->requireFormEvent($form, $event_id), $event_id)) {
@@ -993,6 +993,9 @@ class Record
         // Determine those to lock
         $instances_to_unlock = array_intersect($instances, $locked_instances);
         if (!count($instances_to_unlock)) return; // Nothing to do
+
+        // Check permission - we do this late, when we know there is actually something to unlock
+        $this->project->requirePermission("lock_record");
 
         // Unlock instances
         $unlock_success = array();

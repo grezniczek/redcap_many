@@ -274,6 +274,18 @@ class Project
         return null;
     }
 
+   /**
+     * Gets the survey id for the form. If the form is not a survey, NULL is returned.
+     * @param string $form The unique form name
+     * @return int|null
+     */
+    public function getSurveyId($form) {
+        if ($this->isSurvey($form)) {
+            return (int)$this->proj->forms[$form]["survey_id"];
+        }
+        return null;
+    }
+
     /** 
      * Gets the form with the record id field (i.e. the first form).
      * @return string
@@ -845,6 +857,7 @@ class Project
     private $permissions_user = null;
 
     #endregion
+
 
     #region -- Public Helpers --------------------------------------------------------
 
