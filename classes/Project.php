@@ -439,6 +439,49 @@ class Project
         return $fileOrSig;
     }
 
+    /**
+     * Gets the form status field name(s) of the given form(s) (or all forms).
+     * Will return NULL in case $froms is empty.
+     * @param array<string>|string|null $forms The unique instrument name(s). When omitted (or NULL), all forms in the project are assumed.
+     * @return array<string>|string|null
+     */
+    public function getFormStatusFieldNames($forms = null) {
+        if ($forms === null) {
+            $forms = $this->getForms();
+        }
+        if (empty($forms)) return null;
+        $is_array = is_array($forms);
+        if (!$is_array) $forms = array($forms);
+        $add_complete = function($form_name) { 
+            return $form_name . "_complete"; 
+        };
+        $status_fields = array_map($add_complete, $forms);
+        return $is_array ? $status_fields : $status_fields[0];
+    }
+
+    /**
+     * Gets form names from form status (_complete) fields.
+     * Only valid forms for this project are returned. In case no form is found, NULL is returned.
+     * @param array<string>|string $field_names The field names
+     * @return array<string>|string|null
+     */
+    public function getFormsFromStatusFieldNames($field_names) {
+        if (empty($field_names)) return null;
+        $is_array = is_array($field_names);
+        if (!$is_array) $field_names = array($field_names);
+        $forms = array();
+        foreach ($field_names as $field_name) {
+            if (substr($field_name, -9) == "_complete") {
+                $form = substr($field_name, 0, strlen($field_name) - 9);
+                if ($this->hasForm($form)) {
+                    array_push($forms, $form);
+                }
+            }
+        }
+        $forms = array_unique($forms);
+        if (empty($forms)) return null;
+        return $is_array ? $forms : $forms[0];
+    }
 
     #endregion
 
