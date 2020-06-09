@@ -34,6 +34,9 @@ class MultipleEM_ClearSelectionAjax
                 case "remove-all-records":
                     $module->clearRecords();
                     break;
+                case "delete-records": 
+                    $module->deleteRecords();
+                    break;
                 // Forms - Record Home Page actions (single record)
                 case "update-record-forms-selection":
                     $module->updateForms($update["record"], $update["diff"]["fei"]);
