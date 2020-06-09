@@ -176,7 +176,6 @@ class MultipleExternalModule extends AbstractExternalModule
                     $this->saveSelectedForms($project_id, $record_id, $fei_selected);
                 }
                 $dto_rhp["fei"] = $fei_selected;
-                $this->includeDeleteConfirmationModal();
             }
         }
         // Instance view presets - TODO
@@ -187,7 +186,7 @@ class MultipleExternalModule extends AbstractExternalModule
                 "fields" => array("lap_id", "lap_elapsed")
             )
         );
-
+        
         // User rights - TODO
         global $user_rights;
         $dto_user_rights = array(
@@ -197,8 +196,9 @@ class MultipleExternalModule extends AbstractExternalModule
             "lock_record_multiform" => $user_rights["lock_record_multiform"] != 0,
             "data_access_groups" => $user_rights["data_access_groups"] != 0,
         );
-
-
+        
+        $this->includeDeleteConfirmationModal();
+            
         // Transfer data to the JavaScript implementation.
 ?>
         <script>
