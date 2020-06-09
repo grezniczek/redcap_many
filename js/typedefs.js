@@ -77,7 +77,6 @@
  * @typedef RecordStatusDashboardState
  * @type {{
  *  visible: boolean
- *  $statusBarToggle: JQuery
  *  $toggleAllCheckbox: JQuery
  * }}
  */

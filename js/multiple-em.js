@@ -36,7 +36,6 @@ var multipleInstances = {}
 /** @type {RecordStatusDashboardState} */
 var rsdState = {
     visible: false,
-    $statusBarToggle: null,
     $toggleAllCheckbox: null
 }
 
@@ -139,12 +138,10 @@ function toggleRecordStatusDashboardCheckBoxes() {
     var $toggle = $('.multiple-em-toggle-display')
     if (rsdState.visible) {
         // Remove (hide) checkboxes
-        rsdState.$statusBarToggle.removeClass('statuslink_selected').addClass('statuslink_unselected')
         $toggle.hide()
     }
     else {
         // Show checkboxes
-        rsdState.$statusBarToggle.removeClass('statuslink_unselected').addClass('statuslink_selected')
         $toggle.show()
         if (!$toggle.length) {
             rsdState.$toggleAllCheckbox = $('<input type="checkbox" class="multiple-em-toggle-all"/>').on('change', toggleAll)
@@ -171,24 +168,6 @@ function toggleRecordStatusDashboardCheckBoxes() {
                     }
                 })
             })
-            // Add toolbar.
-            $('<div class="multiple-em-select-toolbar multiple-em-toggle-display"></div>')
-                .append($('<a href="javascript:;"></a>')
-                    .on('click', applyDashboardRecordSelection)
-                    .text(DTO.rsd.apply))
-                .append(' | ')
-                .append($('<a href="javascript:;"></a>')
-                    .on('click', resetDashboardRecordSelection)
-                    .text(DTO.rsd.reset))
-                .append(' | ')
-                .append($('<a href="javascript:;"></a>')
-                    .on('click', addAllDashboardRecords)
-                    .text(DTO.rsd.addAll))
-                .append(' | ')
-                .append($('<a href="javascript:;"></a>')
-                    .on('click', removeAllDashboardRecords)
-                    .text(DTO.rsd.removeAll))
-                .insertBefore($table)
             // Any checked?
             updateRecordStatusDashboardSelection()
         }
@@ -197,20 +176,129 @@ function toggleRecordStatusDashboardCheckBoxes() {
     log('Toggled checkboxes.')
 }
 
+
+/**
+ * Builds the instrument toolbar
+ * @returns {JQuery<HTMLElement>}
+ */
+function buildRecordStatusDashboardToolbar() {
+    var $tb = $('<div class="multiple-em-rsd multiple-em-rsd-toolbar" style="display:block"></div>')
+        .append($('<div class="btn-toolbar" role="toolbar"></div>')
+            .append($('<div class="btn-toolbar-text"></div>')
+                .append(getBrandIconHTML())
+                .append(' ')
+                .append($('<a href="javascript:;" data-multiple-em-action="toggle"></a>')
+                    .html(DTO.name)
+                    .on('click', toggleRecordStatusDashboardCheckBoxes)
+                )
+                .append(' ')
+                .append('<span class="multiple-em-records-total-count badge badge-secondary font-weight-normal">0</span>')
+                .append(' &mdash; ')
+            )
+            // Apply
+            .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rsd-toolbar-apply" data-multiple-em-action="apply-forms"></button>')
+                .text(DTO.rsd.apply)
+                .on('click', applyDashboardRecordSelection)
+            )
+            // View
+            .append($('<div class="btn-group btn-group-xs"></div>')
+                .append($('<button type="button" class="btn btn-secondary multiple-em-rsd-toolbar-button" data-multiple-em-action="view-records"></button>')
+                    .html('View') // tt-fy
+                    .on('click', viewRecords)
+                )
+                .append('<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split multiple-em-dropdown-toggle-view" data-toggle="dropdown"></button')
+                .append('<div class="dropdown-menu multiple-em-dropdown-view"></div>')
+            )
+            // Update
+            .append($('<div class="btn-group btn-group-xs"></div>')
+                .append($('<button type="button" class="btn btn-secondary multiple-em-rsd-toolbar-button" data-multiple-em-action="update-instances"></button>')
+                    .html('Update') // tt-fy
+                    .on('click', updateRecords)
+                )
+                .append('<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split multiple-em-dropdown-toggle-update" data-toggle="dropdown"></button')
+                .append('<div class="dropdown-menu multiple-em-dropdown-update"></div>')
+            )
+        )
+        .insertBefore('#record_status_table')
+        .find('.btn-toolbar')
+    if (DTO.userRights.lock_record) {
+        // Lock and Unlock
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-rsd-toolbar-button" data-multiple-em-action="lock-record"></button>')
+            .text('Lock') // tt-fy
+            .on('click', lockUnlockRecords)
+        )
+        $tb.append($('<button class="btn btn-xs btn-secondary multiple-em-rsd-toolbar-button" data-multiple-em-action="unlock-record"></button>')
+            .text('Unlock') // tt-fy
+            .on('click', lockUnlockRecords)
+        )
+    }
+    if (DTO.userRights.record_delete) {
+        // Delete
+        $tb.append($('<button class="btn btn-xs btn-danger multiple-em-rsd-toolbar-button" data-multiple-em-action="delete-records"></button>')
+            .text('Delete') // tt-fy
+            .on('click', deleteRecords)
+        )
+    }
+    // Clear
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rsd-toolbar-button" data-multiple-em-action="clear-all-forms"></button>')
+        .text('Clear') // tt-fy
+        .on('click', function() {
+            removeAllDashboardRecords()
+        })
+    )
+    .append('|')
+    // All
+    $tb.append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link multiple-em-rsd-toolbar-apply" data-multiple-em-action="add-all-forms"></button>')
+        .text('All') // tt-fy
+        .on('click', addAllDashboardRecords)
+    )
+    .append('|')
+    // Reset
+    .append($('<button class="btn btn-link btn-xs multiple-em-toolbar-link" data-multiple-em-action="restore-forms"></button>')
+        .text('Reset') // tt-fy
+        .on('click', resetDashboardRecordSelection)
+    )
+
+    // Add view and update presets
+    var $viewPresets = $tb.find('.multiple-em-dropdown-view')
+    DTO.rhp.viewPresets.forEach(function(preset) {
+        $viewPresets.append($('<a class="dropdown-item" href="javascript:;"></a>')
+        .text(preset.name)
+        .attr('data-multiple-em-preset-id', preset.id)
+        .on('click', viewInstances)
+        )
+    })
+    var $updatePresets = $tb.find('.multiple-em-dropdown-update')
+    DTO.rhp.updatePresets.forEach(function(preset) {
+        $updatePresets.append($('<a class="dropdown-item" href="javascript:;"></a>')
+            .text(preset.name)
+            .attr('data-multiple-em-preset-id', preset.id)
+            .on('click', updateInstances)
+        )
+    })
+    
+    return $tb
+}
+
+
+
 function setupRecordStatusDashboard() {
-    var $icon = $(getBrandIconHTML())
-        .addClass('fs12')
-    rsdState.$statusBarToggle = $('<a></a>')
-        .addClass('statuslink_unselected')
-        .attr('href', 'javascript:;')
-        .text(DTO.name)
-        .on('click', toggleRecordStatusDashboardCheckBoxes)
-    $('a.statuslink_unselected').parent().find('a').first().before(rsdState.$statusBarToggle)
-    rsdState.$statusBarToggle.before($icon)
-    $icon.after(' ')
-    rsdState.$statusBarToggle.after('&nbsp; | &nbsp;')
-    // Auto-show?
+    var $tb = buildRecordStatusDashboardToolbar()
     if (DTO.rsd.activate) toggleRecordStatusDashboardCheckBoxes()
+    // if (DTO.rsd.activate) $('.multiple-em-rsd-toolbar').show()
+    // var $icon = $(getBrandIconHTML())
+    //     .addClass('fs12')
+    // rsdState.$statusBarToggle = $('<a></a>')
+    //     .addClass('statuslink_unselected')
+    //     .attr('href', 'javascript:;')
+    //     .text(DTO.name)
+    //     .on('click', toggleRecordStatusDashboardCheckBoxes)
+    // $('a.statuslink_unselected').parent().find('a').first().before(rsdState.$statusBarToggle)
+    // rsdState.$statusBarToggle.before($icon)
+    // $icon.after(' ')
+    // rsdState.$statusBarToggle.after('&nbsp; | &nbsp;')
+    // Auto-show?
+    // if (DTO.rsd.activate) toggleRecordStatusDashboardCheckBoxes()
 }
 
 /**
@@ -218,11 +306,21 @@ function setupRecordStatusDashboard() {
  */
 function updateRecordStatusDashboardSelection() {
     rsdState.$toggleAllCheckbox.prop('checked', false)
+    var count = 0
     $('input[data-multiple-em-record]').each(function() {
         var $cb = $(this)
         var id = $cb.attr('data-multiple-em-record')
         $cb.prop('checked', multipleRecords[id] == true)
+        count += multipleRecords[id] ? 1 : 0
     })
+    var $count = $('.multiple-em-records-total-count')
+    $count.text(count)
+    if (count) {
+        $count.removeClass('badge-secondary').addClass('badge-primary')
+    }
+    else {
+        $count.removeClass('badge-primary').addClass('badge-secondary')
+    }
 }
 
 //#endregion
@@ -756,7 +854,7 @@ function addRemoveRecord(override) {
         clearRecordHomePageSelection(false)
     }
     rhpToggleEGTFix()
-    updateServerRecords('update-records', diff)
+    updateServerRecords('update-records', diff, null, null)
 }
 
 /**
@@ -806,6 +904,26 @@ function lockUnlockForms(e) {
     }
 }
 
+function lockUnlockRecords(e) {
+    var $btn = $(e.target)
+    var mode = $btn.attr('data-multiple-em-action')
+    if (mode == 'lock-record' || mode == 'unlock-record') {
+        log('Locking/Unlocking records (' + mode + ').')
+        // disableRecordHomePageToolbarButtons(true)
+        // spinButton($btn)
+        // updateServerForms(mode, null, 
+        //     function(data) {
+        //         unspinButton($btn, true)
+        //         setTimeout(function() { location.reload() }, 200)
+        //     }, 
+        //     function(data) {
+        //         unspinButton($btn, false)
+        //         // TODO - Report error
+        //         updateRecordHomePageToolbars()
+        //     })
+    }
+}
+
 //#endregion
 
 //#region ---- Delete --------------------------------------------------------------------
@@ -833,6 +951,34 @@ function deleteForms() {
         // Cancel
     })
 }
+
+
+/**
+ * Deletes all selected records and reloads the page
+ * @param {JQueryEventObject} e 
+ */
+function deleteRecords(e) {
+    log("deleteRecords");
+    // Get confirmation
+    showModal({
+        template: '.multiple-em-delete-confirmation-modal',
+        title: DTO.rhp.deleteFormsConfirmTitle, //TODO
+        body: DTO.rhp.deleteFormsConfirmText
+    }).then(function(result) {
+        updateServerRecords('delete-records', null,
+            function() {
+                // After successful deletion, reload the page
+                location.reload()
+            },
+            function(error) {
+                // TODO - Notify of failure
+            })
+        log('deleteRecords:', result)
+    }).catch(function() {
+        // Cancel
+    })
+}
+
 
 // /**
 //  * Deletes all selected instances and reloads the page
@@ -881,6 +1027,28 @@ function updateInstances(e) {
     var presetId = e.target.getAttribute('data-multiple-em-preset-id')
     
     log('updateInstances with preset \'' + presetId + '\'')
+}
+
+
+/**
+ * Show the view records dialog
+ * @param {JQueryEventObject} e 
+ */
+function viewRecords(e) {
+    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
+    
+    log('viewRecords with preset \'' + presetId + '\'')
+}
+
+
+/**
+ * Show the update records dialog
+ * @param {JQueryEventObject} e 
+ */
+function updateRecords(e) {
+    var presetId = e.target.getAttribute('data-multiple-em-preset-id')
+    
+    log('updateRecords with preset \'' + presetId + '\'')
 }
 
 //#endregion
@@ -1010,7 +1178,7 @@ function applyDashboardRecordSelection() {
             multipleRecords[id] = checked
         }
     })
-    updateServerRecords('update-records', diff)
+    updateServerRecords('update-records', diff, null, null)
     log('Updated selection')
 }
 
@@ -1031,7 +1199,7 @@ function addAllDashboardRecords() {
         multipleRecords[id] = true
         $cb.prop('checked', true)
     })
-    updateServerRecords('update-records', multipleRecords)
+    updateServerRecords('update-records', multipleRecords, null, null)
     log('Added all')
 }
 
@@ -1045,7 +1213,7 @@ function removeAllDashboardRecords() {
         multipleRecords[id] = false
         $cb.prop('checked', false)
     })
-    updateServerRecords('remove-all-records', null)
+    updateServerRecords('remove-all-records', null, null, null)
     log('Removed all')
 }
 
@@ -1054,7 +1222,7 @@ function removeAllDashboardRecords() {
  */ 
 function clearAllRecords() {
     multipleRecords = {}
-    updateServerRecords('remove-all-records', null)
+    updateServerRecords('remove-all-records', null, null, null)
 }
 
 //#endregion
@@ -1067,11 +1235,14 @@ function clearAllRecords() {
  * Commands are:
  *  - update-records (includes a diff)
  *  - remove-all-records
+ *  - delete-records
  * 
  * @param {string} cmd The command to execute
  * @param {RecordDiff} diff
+ * @param {function} callbackDone
+ * @param {function} callbackFail
  */
-function updateServerRecords(cmd, diff) {
+function updateServerRecords(cmd, diff, callbackDone, callbackFail) {
     var data = {
         command: cmd,
         diff: diff
@@ -1086,10 +1257,24 @@ function updateServerRecords(cmd, diff) {
         if (DTO.rsd.init) updateRecordStatusDashboardSelection()
         if (DTO.rhp.init) updateRecordHomePageToolbars()
         updateDataCollectionLink()
-        log('Ajax Success', jqXHR, 'Records updated. Currently selected:', multipleRecords)
+        if (data.success) {
+            log('Ajax Success', data)
+            if (callbackDone) callbackDone(data)
+        }
+        else {
+            log('Ajax Fail', data)
+            if (callbackFail) callbackFail(data)
+        }
     })
     .fail(function(jqXHR, textStatus, errorThrown) {
-        log('Ajax Failure:', jqXHR, textStatus, errorThrown)
+        log('Ajax Error: ' + errorThrown, jqXHR, textStatus)
+        if (callbackFail) {
+            callbackFail({
+                success: false,
+                error: errorThrown,
+                jqXHR: jqXHR
+            })
+        }
     })
 }
 

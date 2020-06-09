@@ -80,6 +80,7 @@ table.dataTable thead th.multiple-em-checkbox-col {
 .multiple-em-rhp-toolbar .btn-toolbar-text {
     font-size: 0.85rem;
 }
+.multiple-em-rsd-toolbar-button,
 .multiple-em-rhp-toolbar-button {
     margin-left: 0.5rem;
 }
@@ -98,4 +99,12 @@ table.dataTable thead th.multiple-em-checkbox-col {
 /* Buttons */
 .multiple-em-btn-success {
     background-color: green !important;
+}
+
+
+
+/* Record Status Dashboard  */
+.multiple-em-rsd-toolbar {
+    margin: 5px 0 0 5px;
+    margin-bottom: 7px;
 }
