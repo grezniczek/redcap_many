@@ -96,6 +96,14 @@ class Project
     }
 
     /**
+     * Indicates whether the project has multiple arms.
+     * @return boolean
+     */
+    public function multipleArms() {
+        return $this->proj->multiple_arms;
+    }
+
+    /**
      * Gets the number of events in the project.
      * @return int
      */
@@ -103,6 +111,29 @@ class Project
         return $this->proj->numEvents;
     }
 
+    /**
+     * Indicates whether the randomization module is enabled.
+     * @return boolean
+     */
+    public function withRandomization() {
+        return $this->proj->project["randomization"] == 1;
+    }
+
+    /**
+     * Gets the status of the project.
+     */
+    public function getStatus() {
+        $status = $this->proj->project["status"];
+        return (int)$status;
+    }
+
+    /**
+     * Indicates whether the project is set up to require a reason for data changes.
+     * @return boolean
+     */
+    public function requiresChangeReason() {
+        return $this->proj->project["require_change_reason"] == 1;
+    }
 
     #endregion
 
