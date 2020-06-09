@@ -4,6 +4,7 @@ use \Exception;
 use \REDCap;
 use \Logging as REDCap_Logging;
 use \UserRights as REDCap_UserRights;
+use \Records as REDCap_Records;
 use \ExternalModules\StatementResult;
 
 // Note: SQL queries are hand-crafter, as the Framework prepared statements seem to
@@ -33,6 +34,41 @@ class Record
         $this->framework = $framework;
     }
 
+    #region -- Record -------------------------------------------------------------------------
+
+    /**
+     * Deletes the entire record.
+     * @return int The number or recoords delete (1 or 0)
+     * @throws Exception An exception is thrown in case of privileges violations
+     */
+    public function delete() {
+        $this->project->requirePermission("record_delete");
+        // Check that record (still) exists
+        $recordIdField = $this->project->getRecordIdField();
+        $multiple_arms = $this->project->multipleArms();
+        $data = $this->getFieldValues($recordIdField, null);
+        if (!empty($data[$recordIdField])) {
+            $randomization = $this->project->withRandomization();
+            $status = $this->project->getStatus();
+            $requireReason = $this->project->requiresChangeReason();
+            $arm_id = null;
+            REDCap_Records::deleteRecord($this->record_id, $recordIdField, $multiple_arms,
+                $randomization, $status, $requireReason, $arm_id, "Framework API");
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Deletes the record in the specified arm only.
+     * @param string|int $arm The unique arm name or the (numerical) arm id
+     * @throws Exception An exception is thrown in case of privileges violations
+     */
+    public function deleteInArm($arm) {
+        throw new Exception("Not implemented");
+    }
+
+    #endregion
 
     #region -- Form Instance Information ------------------------------------------------------
 
@@ -173,6 +209,7 @@ class Record
      * (i.e. those with data in at least one form).
      * @param string|int $event The unique event name or the (numerical event id).
      * @return array<int>
+     * @throws Exception An exception is thrown in case of project data structure violations
      */
     public function getRepeatingEventInstances($event) {
         // Input validation
@@ -256,6 +293,7 @@ class Record
     }
 
     #endregion
+
 
     #region -- Create Forms (Instances) -------------------------------------------------------
 
@@ -1406,7 +1444,7 @@ class Record
      * The fields must all be on the same event and if repeating, 
      * on the same form (unless the event itself is repeating).
      * 
-     * @param array $fields An array of field names.
+     * @param array<string>|string $fields An array of field names or a single field name
      * @param string $event The name of the event or the (numerical) event id.
      * @param int|array $instances The repeat instance(s) (optional).
      * @return array An associative array (field_name => value).
@@ -1415,6 +1453,7 @@ class Record
     public function getFieldValues($fields, $event, $instances = 1) {
         // Validate input.
         if (!is_array($instances)) $instances = array($instances);
+        if (!is_array($fields)) $fields = array($fields);
         $mode = $this->validateFields($fields, $event, $instances);
         if ($mode == null) return array();
 
