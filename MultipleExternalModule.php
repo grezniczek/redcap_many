@@ -368,6 +368,32 @@ class MultipleExternalModule extends AbstractExternalModule
         $this->clearAllForms();
     }
 
+    public function deleteRecords() {
+        $pid = $this->getProjectId();
+        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        $project = Project::get($this->framework, $pid);
+        $records = $this->loadSelectedRecords($pid);
+        $deleted = array();
+        try {
+            foreach ($records as $record_id) {
+                $record = $project->getRecord($record_id);
+                $record->delete();
+                $deleted[] = $record_id;
+            }
+        }
+        catch (\Throwable $e) {
+            throw new \Exception("An error occured while deleting records: {$e->getMessage()}", 0, $e);
+        }
+        finally {
+            $this->saveSelectedRecords($pid, array_diff($records, $deleted));
+        }
+    }
+
+
+
+
+
+
     public function clearAllInstances($record_id = null) {
         $pid = $this->getProjectId();
         if ($record_id) {
