@@ -9,6 +9,8 @@ use \ExternalModules\ExternalModules;
 
 class Project
 {
+    #region -- Private Variables -----------------------------------------------------
+
     /** @var Framework The EM Framework instance */
     private $framework = null;
 
@@ -17,6 +19,11 @@ class Project
     /** @var REDCap_Project */
     private $proj;
 
+    #endregion
+
+
+    #region -- Constructor (via static get) ------------------------------------------
+
     /**
      * Instantiate a framework Project class.
      * @param Framework $framework The EM Framework instance
@@ -24,7 +31,7 @@ class Project
      * @return Project
      * @throws Exception Invalid project id, user, or when unable to determine
      */
-    public static function get($framework, $project_id = null) {
+    static function get($framework, $project_id = null) {
         return new Project($framework, $project_id);
     }
 
@@ -51,6 +58,7 @@ class Project
         $this->grantUserPermissions(USERID);
     }
 
+    #endregion
 
 
     #region -- Project Properties ----------------------------------------------------
@@ -772,7 +780,23 @@ class Project
     #endregion
 
 
-    #region -- Permissions (User Rights) ---------------------------------------------
+    #region -- Users and Permissions -------------------------------------------------
+
+    /**
+     * Gets a list of the project users.
+     * @return array<User>
+     */
+    function getUsers(){
+        $results = $this->framework->query(
+            "SELECT username FROM redcap_user_rights WHERE project_id = ? ORDER BY username",
+            $this->project_id);
+        $users = [];
+        while($row = $results->fetch_assoc()){
+            $users[] = new \ExternalModules\User($this->framework, $row['username']);
+        }
+        return $users;
+    }
+
 
     // Certain actions will require permissions, e.g. to delete form instances or 
     // records, or to lock/unlock forms and/or records, etc.
@@ -929,6 +953,7 @@ class Project
     #endregion
 
 
+    // -- Below: Needs work, some will be obsolete --
 
     /**
      * Gets the field metadata.
