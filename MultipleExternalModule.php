@@ -136,8 +136,11 @@ class MultipleExternalModule extends AbstractExternalModule
                 // of ids like "repeat_instrument_table-80-repeating_store"
                 // i.e. "repeat_instrument_table-" + event_id + "-" + form name
                 // Then, JS side can use this to add UI elements
-                if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-                $project = Project::get($this->framework, $project_id);
+                // if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+                // $project = Project::get($this->framework, $project_id);
+                /** @var \ExternalModules\Project */
+                $project = $this->framework->getProject($project_id);
+                $project->grantUserPermissions(USERID);
                 $record = $project->getRecord($record_id);
                 // Repeating forms
                 $repeating = $project->getEventsForms(false, true);
@@ -223,8 +226,10 @@ class MultipleExternalModule extends AbstractExternalModule
      */
     function deleteRecordForms($record_id) {
         $pid = $this->getProjectId();
-        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        $project = Project::get($this->framework, $pid);
+        $project = $this->framework->getProject($pid);
+        $project->grantUserPermissions(USERID);
+        // if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        // $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
 
         // Non-repeating forms
@@ -292,8 +297,10 @@ class MultipleExternalModule extends AbstractExternalModule
      */
     function setFormsLockState($record_id, $locked) {
         $pid = $this->getProjectId();
-        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        $project = Project::get($this->framework, $pid);
+        $project = $this->framework->getProject($pid);
+        $project->grantUserPermissions(USERID);
+        // if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        // $project = Project::get($this->framework, $pid);
         $record = $project->getRecord($record_id);
         $selected = $this->loadSelectedInstances($pid, $record_id);
         // [
@@ -370,8 +377,10 @@ class MultipleExternalModule extends AbstractExternalModule
 
     public function deleteRecords() {
         $pid = $this->getProjectId();
-        if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
-        $project = Project::get($this->framework, $pid);
+        $project = $this->framework->getProject($pid);
+        $project->grantUserPermissions(USERID);
+        // if (!class_exists("\DE\RUB\MultipleExternalModule\Project")) include_once("classes/Project.php");
+        // $project = Project::get($this->framework, $pid);
         $records = $this->loadSelectedRecords($pid);
         $deleted = array();
         try {
