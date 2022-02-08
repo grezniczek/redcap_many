@@ -197,7 +197,7 @@ class Project
      * @return integer|null 
      */
     public function getEventId($event = null) {
-        if ($event === null && $this->isLongitudinal()) {
+        if ($event === null) {
             return $this->proj->firstEventId;
         }
         if ($this->hasEvent($event)) {

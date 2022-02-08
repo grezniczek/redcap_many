@@ -1456,9 +1456,9 @@ class Record
         if (!is_array($fields)) $fields = array($fields);
         $mode = $this->validateFields($fields, $event, $instances);
         if ($mode == null) return array();
-
-        $event_id = $this->project->getEventId($event);
+        
         $project_id = $this->project->getProjectId();
+        $event_id = $this->project->getEventId($event);
         $form = $this->project->getFormByField($fields[0]);
 
         $data = REDCap::getData(
@@ -1604,7 +1604,7 @@ class Record
      * Validates compatibility of "fields, event, instance" combinations with project data structure.
      * 
      * @param array $fields A list of field names.
-     * @param string $event The event name of (numerical) event id.
+     * @param string $event The event name or (numerical) event id.
      * @param array<int> $instances The repeat instance (optional).
      * @return int|null The mode - one of REPEAT_EVENT, REPEAT_FORM, NON_REPEATING, or null if there is nothing to do.
      * @throws Excetion in case of violations.
