@@ -82,16 +82,18 @@ class Record
         if ($this->project->hasForm($form) && 
             $this->project->isFormRepeating($form, $event) &&
             $this->project->hasEvent($event)) {
+            $project_id = $this->project->getProjectId();
             $event_id = $this->project->getEventId($event);
+            $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
             $sql = "
                 SELECT COUNT(*) as `count` 
-                FROM redcap_data 
+                FROM $data_table 
                 WHERE `project_id` = ? AND 
                       `event_id` = ? AND 
                       `record` = ? AND 
                       `field_name` = ?";
             $result = $this->framework->query($sql, [
-                $this->project->getProjectId(),
+                $project_id,
                 $event_id,
                 $this->record_id,
                 $this->project->getFormStatusFieldNames($form)
@@ -116,9 +118,11 @@ class Record
             $this->project->isFormRepeating($form, $event) &&
             $this->project->hasEvent($event)) {
             $event_id = $this->project->getEventId($event);
+            $project_id = $this->project->getProjectId();
+            $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
             $sql = "
                 SELECT IF(`instance` IS NULL, 1, `instance`) AS instance 
-                FROM redcap_data 
+                FROM $data_table 
                 WHERE `project_id` = ? AND 
                       `event_id` = ? AND 
                       `record` = ? AND 
@@ -126,7 +130,7 @@ class Record
                 ORDER BY instance DESC 
                 LIMIT 1";
             $result = $this->framework->query($sql, [
-                $this->project->getProjectId(),
+                $project_id,
                 $event_id,
                 $this->record_id,
                 $this->project->getFormStatusFieldNames($form)
@@ -219,12 +223,14 @@ class Record
         }
         // Query redcap_data for record_id to find events
         $instances = array();
+        $project_id = $this->project->getProjectId();
+        $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
         $q = $this->framework->createQuery();
         $q->add("SELECT IFNULL(`instance`, 1) AS `instance`
-                 FROM redcap_data 
+                 FROM $data_table 
                  WHERE `project_id` = ? AND `event_id` = ? AND 
                        `record` = ? AND `field_name` = ?", [
-            $this->project->getProjectId(),
+            $project_id,
             $event_id,
             $this->record_id,
             $this->project->getRecordIdField()
@@ -268,9 +274,11 @@ class Record
         if (!$longitudinal && $event_repeating && $instance === null) return false;
         // Build queries
         $form_status_fields = $this->project->getFormStatusFieldNames();
+        $project_id = $this->project->getProjectId();
+        $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
         $q = $this->framework->createQuery();
-        $q->add("SELECT 1 FROM redcap_data WHERE `project_id` = ? AND `record` = ?", [
-            $this->project->getProjectId(),
+        $q->add("SELECT 1 FROM $data_table WHERE `project_id` = ? AND `record` = ?", [
+            $project_id,
             $this->record_id
         ]);
         if ($event_repeating && $instance !== null) {
@@ -507,8 +515,10 @@ class Record
         }
 
         // Delete all responses from data table for this form
-        $sql = "DELETE FROM redcap_data 
-                WHERE `project_id` = {$this->project->getProjectId()} AND 
+        $project_id = $this->project->getProjectId();
+        $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
+        $sql = "DELETE FROM $data_table 
+                WHERE `project_id` = {$project_id} AND 
                       `event_id` = {$event_id} AND 
                       `record` = '{$this->db_record}' AND 
                       `instance` ";
@@ -557,8 +567,8 @@ class Record
                     // Since other events have data for this record, we should go ahead and
                     // remove ALL data from this event (because we might have __GROUPID__ and 
                     // record ID field stored on backend for this event still)
-                    $sql = "DELETE FROM redcap_data 
-                            WHERE `project_id` = {$this->project->getProjectId()} AND 
+                    $sql = "DELETE FROM $data_table 
+                            WHERE `project_id` = {$project_id} AND 
                                   `record` = '{$this->db_record}' AND
                                   `event_id` = {$event_id} AND 
                                   `instance` ";
@@ -609,9 +619,9 @@ class Record
         }
         // Log the data change
         $log_sql = $this->project->oneLineSQL($log_sql);
-        REDCap_Logging::logEvent($log_sql, "redcap_data", "UPDATE", $this->record_id,
+        REDCap_Logging::logEvent($log_sql, $data_table, "UPDATE", $this->record_id,
             $log_display, $log_desc, $log_reason, $this->project->getPermissionsUser(), 
-            $this->project->getProjectId(), $this->now(), $event_id, $instance);
+            $project_id, $this->now(), $event_id, $instance);
     }
 
     /**
@@ -1326,9 +1336,10 @@ class Record
         // Verify record / instance exists.
         $event_id = $this->project->getEventId($event);
         $project_id = $this->project->getProjectId();
+        $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
         $form = $this->project->getFormByField($fields[0]);
         $sql = "SELECT COUNT(*) AS `count`
-                FROM redcap_data
+                FROM $data_table
                 WHERE `project_id` = ? AND
                       `event_id`= ? AND
                       `record` = ? AND ";
